@@ -1,0 +1,6 @@
+{
+  "name": "Club 11 Biliárd és Kávézó",
+  "description": "A Club 11 biliárd szalon, kávézó és szórakozóhely hivatalos weboldala Budapesten (Újbuda), a Gabányi László Sportcsarnokban.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
