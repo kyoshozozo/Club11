@@ -16,19 +16,11 @@ interface HeroProps {
 export default function Hero({ onStartBooking, onExploreMenu, onOpenChat }: HeroProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [currentTime, setCurrentTime] = useState('');
-  const [imageSrc, setImageSrc] = useState('/asztalok.jpg');
+  const [imageSrc, setImageSrc] = useState('https://images.unsplash.com/photo-1544192240-4a34fed0104c?q=80&w=1200&auto=format&fit=crop');
   const [useSvgFallback, setUseSvgFallback] = useState(false);
 
   const handleImageError = () => {
-    if (imageSrc === '/asztalok.jpg') {
-      setImageSrc('/asztalok.png');
-    } else if (imageSrc === '/asztalok.png') {
-      setImageSrc('/asztalok.jpeg');
-    } else if (imageSrc === '/asztalok.jpeg') {
-      setImageSrc('/asztalok.webp');
-    } else {
-      setUseSvgFallback(true);
-    }
+    setUseSvgFallback(true);
   };
 
   useEffect(() => {
@@ -122,7 +114,7 @@ export default function Hero({ onStartBooking, onExploreMenu, onOpenChat }: Hero
             {/* Quick stats / highlights */}
             <div className="grid grid-cols-3 gap-4 max-w-md mx-auto lg:mx-0">
               <div className="bg-slate-900/60 backdrop-blur-sm border border-slate-800/80 rounded-xl p-3 text-center">
-                <span className="block text-2xl font-black text-emerald-400 font-mono">7x</span>
+                <span className="block text-2xl font-black text-emerald-400 font-mono">6x</span>
                 <span className="text-xs text-slate-400 uppercase tracking-wider font-semibold">Pool asztal</span>
               </div>
               <div className="bg-slate-900/60 backdrop-blur-sm border border-slate-800/80 rounded-xl p-3 text-center">
@@ -162,7 +154,7 @@ export default function Hero({ onStartBooking, onExploreMenu, onOpenChat }: Hero
               </span>
               <span className="flex items-center gap-1.5">
                 <Navigation className="w-4 h-4 text-emerald-500" />
-                Hauszmann Aladár utca 5.
+                Hauszmann Alajos utca 5.
               </span>
             </div>
           </div>
@@ -211,15 +203,15 @@ export default function Hero({ onStartBooking, onExploreMenu, onOpenChat }: Hero
 
                 <div className="border-t border-slate-800/80 pt-4 space-y-3 text-xs font-mono">
                   <div className="flex justify-between items-center text-slate-300">
-                    <span className="text-slate-500">Brunswick Biliárd</span>
-                    <span className="text-emerald-400 font-bold">7 asztal</span>
+                    <span className="text-slate-500">Pool Biliárd</span>
+                    <span className="text-emerald-400 font-bold">6 asztal</span>
                   </div>
                   <div className="flex justify-between items-center text-slate-300">
                     <span className="text-slate-500">Soft Darts</span>
                     <span className="text-emerald-400 font-bold">2 gép</span>
                   </div>
                   <div className="flex justify-between items-center text-slate-300">
-                    <span className="text-slate-500">Garlando Csocsó</span>
+                    <span className="text-slate-500">Csocsó</span>
                     <span className="text-emerald-400 font-bold">2 asztal</span>
                   </div>
                   <div className="flex justify-between items-center text-slate-300">

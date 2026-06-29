@@ -4,7 +4,7 @@
  */
 
 import React from 'react';
-import { Sparkles, MapPin, Phone, Clock, MessageSquare, Coffee, Layers, BookOpen } from 'lucide-react';
+import { Sparkles, MapPin, Phone, Clock, MessageSquare, Coffee, Layers, BookOpen, Camera } from 'lucide-react';
 import Club11Logo from './Club11Logo';
 
 interface NavbarProps {
@@ -19,6 +19,7 @@ export default function Navbar({ activeSection, setActiveSection, isChatOpen, se
     { id: 'home', label: 'Főoldal', icon: Layers },
     { id: 'booking', label: 'Asztalfoglalás', icon: Clock },
     { id: 'menu', label: 'Kávézó & Bár', icon: Coffee },
+    { id: 'gallery', label: 'Galéria', icon: Camera },
     { id: 'posts', label: 'Hírek', icon: BookOpen },
     { id: 'about', label: 'Kapcsolat', icon: MapPin },
   ];
@@ -62,12 +63,12 @@ export default function Navbar({ activeSection, setActiveSection, isChatOpen, se
           {/* Quick Contact & Chat toggle */}
           <div className="flex items-center gap-3">
             <a 
-              href="tel:+36209451111" 
+              href="tel:+36706214181" 
               className="hidden lg:flex items-center gap-2 text-slate-400 hover:text-white transition-all text-sm font-mono"
               id="nav-phone-link"
             >
               <Phone className="w-4 h-4 text-emerald-400 animate-pulse" />
-              <span>+36 20 945 1111</span>
+              <span>+36 70 621 4181</span>
             </a>
             
             <button

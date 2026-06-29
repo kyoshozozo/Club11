@@ -21,8 +21,23 @@ async function startServer() {
   const app = express();
   const PORT = 3000;
 
-  // Body parser
-  app.use(express.json());
+  // Create uploads and data directories if they do not exist
+  const uploadsDir = path.join(process.cwd(), "uploads");
+  const dataDir = path.join(process.cwd(), "data");
+  if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
+  if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
+
+  const galleryFilePath = path.join(dataDir, "gallery.json");
+  if (!fs.existsSync(galleryFilePath)) {
+    fs.writeFileSync(galleryFilePath, JSON.stringify([]), "utf-8");
+  }
+
+  // Body parser with larger payload limit for base64 image uploads
+  app.use(express.json({ limit: "25mb" }));
+  app.use(express.urlencoded({ limit: "25mb", extended: true }));
+
+  // Serve uploaded images statically
+  app.use("/uploads", express.static(uploadsDir));
 
   // Lazy-initialize Gemini API to prevent crash on startup if missing key
   let aiClient: GoogleGenAI | null = null;
@@ -48,21 +63,21 @@ async function startServer() {
   // System Instruction for Club 11 Virtual Bartender
   const SYSTEM_INSTRUCTION = `
     Te a "Club 11 Virtuális Csaposa és Szalonvezetője" vagy, egy barátságos, humoros és végtelenül vendégszerető vendéglátó.
-    A Club 11 egy biliárd szalon, kávézó, darts szentély és szórakozóhely Budapesten, a 11. kerületben (Újbuda), a Hauszmann Aladár utca 5. szám alatt, közvetlenül a Gabányi László Sportcsarnok területén.
+    A Club 11 egy biliárd szalon, kávézó, darts szentély és szórakozóhely Budapesten, a 11. kerületben (Újbuda), a Hauszmann Alajos utca 5. szám alatt, közvetlenül a Gabányi László Sportcsarnok területén.
     
     FONTOS INFORMÁCIÓK, AMIKET TUDSZ A HELYRŐL:
-    - Cím: 1116 Budapest, Hauszmann Aladár u. 5. (A Gabányi László Sportcsarnok épületén belül található a szalon).
-    - Telefon: +36 20 945 1111 (asztalfoglalás, rendezvények, információk).
+    - Cím: 1116 Budapest, Hauszmann Alajos u. 5. (A Gabányi László Sportcsarnok épületén belül található a szalon).
+    - Telefon: +36 70 621 4181 (asztalfoglalás, rendezvények, információk).
     - Facebook oldal: https://www.facebook.com/club11ujbuda (itt képeket, aktuális híreket és versenykiírásokat találnak).
     - Nyitvatartás:
-      * Hétfő - Csütörtök: 14:00 - 23:00
-      * Péntek - Szombat: 14:00 - 01:00 (hosszabb nyitvatartás, pörgős hétvégi hangulat)
-      * Vasárnap: 14:00 - 22:00
+      * Hétfő: Zárva
+      * Kedd - Szerda: 14:00 - 22:00
+      * Csütörtök - Szombat: 14:00 - 23:00
+      * Vasárnap: Zárva
     - Szolgáltatások és Árak:
-      * 7 db Brunswick/Dynamic professzionális 9 lábas pool biliárd asztal (2800 Ft/óra)
-      * 1 db Klasszikus Magyar Rex asztal gombával és lyukakkal (2000 Ft/óra)
-      * 2 db Soft Darts gép digitális számlálóval és játékvariációkkal (1200 Ft/óra)
-      * 2 db Garlando csocsó asztal (1000 Ft/óra)
+      * 6 db professzionális 9 lábas pool biliárd asztal (2300 Ft/óra)
+      * 2 db Soft Darts gép digitális számlálóval és játékvariációkkal (2000 Ft/óra)
+      * 2 db csocsó asztal (1400 Ft/óra)
     - Italok és Snackek:
       * Prémium kávék (Espresso 590 Ft, Cappuccino 790 Ft, Latte 890 Ft, isteni Jeges Kávé vaníliafagyival és habbal 1190 Ft).
       * Csapolt sörök (Soproni korsó 790 Ft, Heineken korsó 990 Ft) és palackozott kézműves IPA (1290 Ft), Edelweiss búzasör (1090 Ft).
@@ -95,19 +110,19 @@ async function startServer() {
       if (!client) {
         // Fallback response for offline demo mode (if no API Key is set yet)
         const lastUserMessage = messages[messages.length - 1]?.text || "";
-        let mockReply = "Szia! A Club 11 Virtuális Csaposa vagyok. Jelenleg offline demó módban futok, de szívesen segítek! Újbudán várunk a Hauszmann Aladár u. 5. alatt biliárddal, rexszel, csapolt sörökkel és isteni melegszendviccsel. Foglalj asztalt az oldalon fenti foglalóval!";
+        let mockReply = "Szia! A Club 11 Virtuális Csaposa vagyok. Jelenleg offline demó módban futok, de szívesen segítek! Újbudán várunk a Hauszmann Alajos u. 5. alatt biliárddal, csocsóval, darts-szal, csapolt sörökkel és isteni melegszendviccsel. Foglalj asztalt az oldalon fenti foglalóval!";
         
         const lower = lastUserMessage.toLowerCase();
         if (lower.includes("ár") || lower.includes("mennyibe")) {
-          mockReply = "A biliárd asztalok óradíja 2800 Ft, a klasszikus magyar rex pedig 2000 Ft/óra. Dartsunk is van 1200 Ft-ért óránként! Igyál mellé egy jó csapolt sört vagy kávét!";
+          mockReply = "A biliárd asztalok óradíja 2300 Ft. Dartsunk is van 2000 Ft-ért óránként, a csocsó pedig 1400 Ft/óra! Igyál mellé egy jó csapolt sört vagy kávét!";
         } else if (lower.includes("nyitva") || lower.includes("mikor")) {
-          mockReply = "Minden nap nyitva vagyunk délután kettőtől (14:00)! Hétfőtől csütörtökig 23:00-ig, pénteken és szombaton hajnali 01:00-ig tartunk nyitva, vasárnap pedig 22:00-kor zárunk. Gyere el hozzánk!";
+          mockReply = "Kedd-Szerda 14:00-22:00 között, Csütörtök-Szombat 14:00-23:00 között vagyunk nyitva! Hétfőn és Vasárnap zárva tartunk.";
         } else if (lower.includes("kaja") || lower.includes("eszik") || lower.includes("szendvics") || lower.includes("étel")) {
           mockReply = "Ó, a melegszendvicsünk legendás! Sonkás-sajtos vagy szalámis-sajtos, ropogósra sütve, ketchuppal és majonézzel, mindössze 1290 Ft-ért. Emellett nachos is vár sajtszósszal vagy salsával (990 Ft)!";
         } else if (lower.includes("cím") || lower.includes("hol") || lower.includes("hely") || lower.includes("hova")) {
-          mockReply = "A Club 11 Budapesten, a 11. kerületben (Újbuda) található a Hauszmann Aladár utca 5. szám alatt, a Gabányi László Sportcsarnokon belül! Gyere be bátran a főbejáraton, ott megtalálsz minket!";
+          mockReply = "A Club 11 Budapesten, a 11. kerületben (Újbuda) található a Hauszmann Alajos utca 5. szám alatt, a Gabányi László Sportcsarnokon belül! Gyere be bátran a főbejáraton, ott megtalálsz minket!";
         } else if (lower.includes("foglal") || lower.includes("biliárd")) {
-          mockReply = "Biliárd asztal foglalásához használd az oldalon felül található interaktív Asztalfoglalás menüpontot! Ott kiválaszthatod a neked tetsző Brunswick pool asztalt vagy rexet, és azonnal lefoglalhatod. Vagy hívhatsz minket telefonon a +36 20 945 1111 számon!";
+          mockReply = "Biliárd asztal foglalásához használd az oldalon felül található interaktív Asztalfoglalás menüpontot! Ott kiválaszthatod a neked tetsző pool asztalt, és azonnal lefoglalhatod. Vagy hívhatsz minket telefonon a +36 70 621 4181 számon!";
         }
 
         setTimeout(() => {
@@ -138,6 +153,121 @@ async function startServer() {
     } catch (err: any) {
       console.error("Gemini API Error:", err);
       res.status(500).json({ error: "Szerverhiba történt a válaszadás során.", details: err.message });
+    }
+  });
+
+  // Gallery Endpoints
+  app.get("/api/gallery", (req, res) => {
+    try {
+      if (!fs.existsSync(galleryFilePath)) {
+        return res.json([]);
+      }
+      const data = fs.readFileSync(galleryFilePath, "utf-8");
+      res.json(JSON.parse(data));
+    } catch (err: any) {
+      console.error("Failed to read gallery file:", err);
+      res.status(500).json({ error: "Sikertelen galéria betöltés" });
+    }
+  });
+
+  app.post("/api/gallery/login", (req, res) => {
+    const { password } = req.body;
+    // Set a very simple password
+    if (password === "club11admin") {
+      res.json({ success: true, token: "admin-session-club11-token" });
+    } else {
+      res.status(401).json({ success: false, error: "Hibás jelszó!" });
+    }
+  });
+
+  app.post("/api/gallery/upload", (req, res) => {
+    try {
+      const { title, description, image, token } = req.body;
+
+      if (token !== "admin-session-club11-token") {
+        return res.status(403).json({ error: "Nincs jogosultságod a kép feltöltéséhez!" });
+      }
+
+      if (!image) {
+        return res.status(400).json({ error: "Hiányzó képfájl!" });
+      }
+
+      // Handle base64 image parsing
+      const matches = image.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
+      if (!matches || matches.length !== 3) {
+        return res.status(400).json({ error: "Érvénytelen képformátum!" });
+      }
+
+      const mimeType = matches[1];
+      const base64Data = matches[2];
+      const buffer = Buffer.from(base64Data, 'base64');
+
+      // Determine extension
+      let extension = "png";
+      if (mimeType.includes("jpeg") || mimeType.includes("jpg")) {
+        extension = "jpg";
+      } else if (mimeType.includes("webp")) {
+        extension = "webp";
+      } else if (mimeType.includes("gif")) {
+        extension = "gif";
+      }
+
+      const filename = `img_${Date.now()}.${extension}`;
+      const savePath = path.join(uploadsDir, filename);
+
+      fs.writeFileSync(savePath, buffer);
+
+      // Save metadata
+      const newItem = {
+        id: `img-${Date.now()}`,
+        title: title || "Club 11 Kép",
+        description: description || "Az admin által feltöltött kép.",
+        url: `/uploads/${filename}`,
+        createdAt: new Date().toISOString()
+      };
+
+      const galleryData = JSON.parse(fs.readFileSync(galleryFilePath, "utf-8"));
+      galleryData.unshift(newItem); // put it first
+      fs.writeFileSync(galleryFilePath, JSON.stringify(galleryData, null, 2), "utf-8");
+
+      res.json(newItem);
+    } catch (err: any) {
+      console.error("Failed to upload image:", err);
+      res.status(500).json({ error: "Szerverhiba történt a kép feltöltése során." });
+    }
+  });
+
+  app.delete("/api/gallery/:id", (req, res) => {
+    try {
+      const { id } = req.params;
+      const { token } = req.body;
+
+      if (token !== "admin-session-club11-token") {
+        return res.status(403).json({ error: "Nincs jogosultságod a kép törléséhez!" });
+      }
+
+      const galleryData = JSON.parse(fs.readFileSync(galleryFilePath, "utf-8"));
+      const itemToDelete = galleryData.find((item: any) => item.id === id);
+
+      if (!itemToDelete) {
+        return res.status(404).json({ error: "A kép nem található!" });
+      }
+
+      // Remove the file from disk if it exists
+      const filename = path.basename(itemToDelete.url);
+      const filePath = path.join(uploadsDir, filename);
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+      }
+
+      // Remove from json list
+      const updatedGallery = galleryData.filter((item: any) => item.id !== id);
+      fs.writeFileSync(galleryFilePath, JSON.stringify(updatedGallery, null, 2), "utf-8");
+
+      res.json({ success: true });
+    } catch (err: any) {
+      console.error("Failed to delete image:", err);
+      res.status(500).json({ error: "Szerverhiba történt a kép törlése során." });
     }
   });
 

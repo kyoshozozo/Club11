@@ -53,13 +53,13 @@ export default function About() {
   };
 
   const schedule = [
-    { days: 'Hétfő', hours: '14:00 - 23:00' },
-    { days: 'Kedd', hours: '14:00 - 23:00' },
-    { days: 'Szerda', hours: '14:00 - 23:00' },
+    { days: 'Hétfő', hours: 'Zárva' },
+    { days: 'Kedd', hours: '14:00 - 22:00' },
+    { days: 'Szerda', hours: '14:00 - 22:00' },
     { days: 'Csütörtök', hours: '14:00 - 23:00' },
-    { days: 'Péntek', hours: '14:00 - 01:00' },
-    { days: 'Szombat', hours: '14:00 - 01:00' },
-    { days: 'Vasárnap', hours: '14:00 - 22:00' },
+    { days: 'Péntek', hours: '14:00 - 23:00' },
+    { days: 'Szombat', hours: '14:00 - 23:00' },
+    { days: 'Vasárnap', hours: 'Zárva' },
   ];
 
   return (
@@ -91,7 +91,7 @@ export default function About() {
                   <h4 className="font-semibold text-sm text-white">Címünk</h4>
                   <p className="text-xs text-slate-400 font-sans leading-relaxed pt-1">
                     1116 Budapest,<br />
-                    Hauszmann Aladár u. 5.<br />
+                    Hauszmann Alajos u. 5.<br />
                     <span className="text-emerald-400 font-medium">(Gabányi László Sportcsarnok)</span>
                   </p>
                 </div>
@@ -102,7 +102,7 @@ export default function About() {
                 <div>
                   <h4 className="font-semibold text-sm text-white">Telefonszám</h4>
                   <p className="text-xs text-slate-400 font-mono leading-relaxed pt-1">
-                    <a href="tel:+36209451111" className="hover:text-emerald-400 transition-colors">+36 20 945 1111</a>
+                    <a href="tel:+36706214181" className="hover:text-emerald-400 transition-colors">+36 70 621 4181</a>
                   </p>
                   <p className="text-[10px] text-slate-500 pt-1 font-sans">
                     Hívható nyitvatartási időben asztalfoglaláshoz is!
@@ -125,7 +125,7 @@ export default function About() {
                 <div>
                   <h4 className="font-semibold text-sm text-white">Megközelítés</h4>
                   <p className="text-xs text-slate-400 font-sans leading-relaxed pt-1">
-                    M4 metróval, 17, 41, 47, 56 villamosokkal (Hauszmann Aladár utca megálló).
+                    M4 metróval, 17, 41, 47, 56 villamosokkal (Hauszmann Alajos utca megálló).
                   </p>
                 </div>
               </div>
@@ -284,7 +284,7 @@ export default function About() {
             {/* Simulated streets / paths layout */}
             <div className="absolute top-12 left-0 right-0 h-4 bg-slate-900 border-t border-b border-slate-800/80"></div>
             <div className="absolute bottom-16 left-0 right-0 h-6 bg-slate-900 border-t border-b border-slate-800/80 flex items-center justify-center">
-              <span className="text-[9px] font-mono tracking-widest text-slate-600 uppercase">Hauszmann Aladár utca</span>
+              <span className="text-[9px] font-mono tracking-widest text-slate-600 uppercase">Hauszmann Alajos utca</span>
             </div>
             <div className="absolute top-0 bottom-0 left-1/3 w-6 bg-slate-900 border-l border-r border-slate-800/80"></div>
             <div className="absolute top-0 bottom-0 right-1/4 w-8 bg-slate-900 border-l border-r border-slate-800/80"></div>

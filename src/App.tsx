@@ -10,6 +10,7 @@ import BookingSystem from './components/BookingSystem';
 import Menu from './components/Menu';
 import FacebookFeed from './components/FacebookFeed';
 import About from './components/About';
+import Gallery from './components/Gallery';
 import AiChatbot from './components/AiChatbot';
 import Club11Logo from './components/Club11Logo';
 import { Layers, Clock, Coffee, BookOpen, MapPin, MessageSquare, Facebook, Phone, Heart } from 'lucide-react';
@@ -81,7 +82,7 @@ export default function App() {
                   </div>
                   <h3 className="text-lg font-bold text-white mb-2 group-hover:text-emerald-400 transition-colors">Professzionális Biliárd</h3>
                   <p className="text-xs text-slate-400 leading-relaxed">
-                    Hivatalos 9 lábas Brunswick pool asztalok várják a precíz lökések kedvelőit. Rex asztalunk pedig igazi nosztalgia!
+                    9 lábas professzionális pool biliárd asztalok várják a precíz lökések kedvelőit. Rex asztalunk pedig igazi nosztalgia!
                   </p>
                   <span className="inline-flex items-center gap-1.5 text-xs text-emerald-400 font-bold font-mono pt-4">
                     Asztalfoglalás indítása &rarr;
@@ -131,6 +132,7 @@ export default function App() {
 
         {activeSection === 'booking' && <BookingSystem />}
         {activeSection === 'menu' && <Menu />}
+        {activeSection === 'gallery' && <Gallery />}
         {activeSection === 'posts' && <FacebookFeed />}
         {activeSection === 'about' && <About />}
       </main>
@@ -186,6 +188,9 @@ export default function App() {
                   <button onClick={() => setActiveSection('menu')} className="hover:text-emerald-400 transition-colors">Bár és Kávézó</button>
                 </li>
                 <li>
+                  <button onClick={() => setActiveSection('gallery')} className="hover:text-emerald-400 transition-colors">Galéria</button>
+                </li>
+                <li>
                   <button onClick={() => setActiveSection('posts')} className="hover:text-emerald-400 transition-colors">Hírek és Facebook bejegyzések</button>
                 </li>
                 <li>
@@ -200,11 +205,11 @@ export default function App() {
               <ul className="space-y-2 text-xs font-sans">
                 <li className="flex items-start gap-1.5">
                   <MapPin className="w-4 h-4 text-emerald-500 shrink-0" />
-                  <span>1116 Budapest, Hauszmann Aladár u. 5.</span>
+                  <span>1116 Budapest, Hauszmann Alajos u. 5.</span>
                 </li>
                 <li className="flex items-center gap-1.5">
                   <Phone className="w-4 h-4 text-emerald-500 shrink-0" />
-                  <a href="tel:+36209451111" className="hover:text-emerald-400 font-mono transition-colors">+36 20 945 1111</a>
+                  <a href="tel:+36706214181" className="hover:text-emerald-400 font-mono transition-colors">+36 70 621 4181</a>
                 </li>
               </ul>
             </div>

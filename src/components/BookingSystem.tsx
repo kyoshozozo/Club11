@@ -151,7 +151,7 @@ export default function BookingSystem() {
         <span className="text-xs font-mono uppercase tracking-widest text-emerald-400 font-bold block">Interaktív Asztalfoglaló</span>
         <h2 className="text-3xl sm:text-4xl font-black text-white tracking-tight">Válaszd ki a saját asztalodat!</h2>
         <p className="text-slate-400 max-w-2xl mx-auto text-sm">
-          Foglald le kedvenc Brunswick pool asztalodat, a nosztalgikus magyar rexet vagy darts pályáinkat online. A foglalás azonnal érvénybe lép!
+          Foglald le kedvenc pool biliárd asztalodat, darts pályáinkat vagy csocsó asztalainkat online. A foglalás azonnal érvénybe lép!
         </p>
       </div>
 
@@ -164,7 +164,7 @@ export default function BookingSystem() {
           <div className="space-y-3">
             <label className="text-xs font-mono uppercase tracking-wider text-slate-400 font-bold">1. Játéktípus kiválasztása</label>
             <div className="flex flex-wrap gap-2">
-              {(['all', 'pool', 'rex', 'darts', 'foosball'] as const).map((type) => (
+              {(['all', 'pool', 'darts', 'foosball'] as const).map((type) => (
                 <button
                   key={type}
                   id={`type-filter-${type}`}

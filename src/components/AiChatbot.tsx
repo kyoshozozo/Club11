@@ -71,7 +71,7 @@ export default function AiChatbot({ isOpen, setIsOpen, onNavigateToBooking }: Ai
       const errorMsg = {
         id: `msg-${Date.now() + 1}`,
         role: 'model',
-        text: 'Szia! Jelenleg hálózati hiba lépett fel, de a Club 11 mindig nyitva áll előtted! Hétfőtől csütörtökig 14:00-23:00, hétvégén pedig péntek-szombat hajnali 01:00-ig várunk biliárddal és sörrel. Hívj minket telefonon: +36 20 945 1111!',
+        text: 'Szia! Jelenleg hálózati hiba lépett fel, de a Club 11 mindig nyitva áll előtted! Kedd-Szerda 14:00-22:00, Csütörtök-Szombat 14:00-23:00 között várunk (Hétfőn és Vasárnap zárva). Hívj minket telefonon: +36 70 621 4181!',
         timestamp: new Date().toLocaleTimeString('hu-HU', { hour: '2-digit', minute: '2-digit' })
       };
       setMessages(prev => [...prev, errorMsg]);

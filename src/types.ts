@@ -29,8 +29,8 @@ export interface Table {
 export interface MenuItem {
   id: string;
   name: string;
-  category: 'coffee' | 'beer' | 'soft' | 'cocktail' | 'snack';
-  price: number; // in HUF
+  category: 'etlap' | 'itallap';
+  price: number | string; // in HUF
   description?: string;
   isPopular?: boolean;
 }

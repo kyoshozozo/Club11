@@ -6,10 +6,10 @@
 import React, { useState, useEffect } from 'react';
 import { MENU_ITEMS } from '../data';
 import { MenuItem } from '../types';
-import { Search, Heart, Award, Coffee, Beer, Sparkles } from 'lucide-react';
+import { Search, Heart, Award, Sparkles, AlertCircle } from 'lucide-react';
 
 export default function Menu() {
-  const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [selectedCategory, setSelectedCategory] = useState<'etlap' | 'itallap'>('etlap');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [favorites, setFavorites] = useState<string[]>([]);
 
@@ -37,17 +37,13 @@ export default function Menu() {
   };
 
   const categories = [
-    { id: 'all', label: 'Teljes kínálat', icon: Sparkles },
-    { id: 'coffee', label: 'Kávé Különlegességek', icon: Coffee },
-    { id: 'beer', label: 'Sörök', icon: Beer },
-    { id: 'soft', label: 'Frissítő Üdítők', icon: Sparkles },
-    { id: 'cocktail', label: 'Koktélok & Rövidek', icon: Award },
-    { id: 'snack', label: 'Snackek & Harapnivalók', icon: Coffee },
-  ];
+    { id: 'etlap', label: 'Étlap' },
+    { id: 'itallap', label: 'Itallap' },
+  ] as const;
 
   // Filter items based on category and search query
   const filteredItems = MENU_ITEMS.filter((item) => {
-    const matchesCategory = selectedCategory === 'all' || item.category === selectedCategory;
+    const matchesCategory = item.category === selectedCategory;
     const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
                           (item.description && item.description.toLowerCase().includes(searchQuery.toLowerCase()));
     return matchesCategory && matchesSearch;
@@ -59,9 +55,9 @@ export default function Menu() {
       {/* Header */}
       <div className="text-center space-y-4 mb-10">
         <span className="text-xs font-mono uppercase tracking-widest text-emerald-400 font-bold block">Kávézó, Bár & Snackek</span>
-        <h2 className="text-3xl sm:text-4xl font-black text-white tracking-tight">Ital- és Étlapunk</h2>
+        <h2 className="text-3xl sm:text-4xl font-black text-white tracking-tight">Áraink</h2>
         <p className="text-slate-400 max-w-2xl mx-auto text-sm">
-          Frissülj fel a játék közben! Kiváló olasz kávék, jéghideg csapolt sörök, koktélok és a legendás házi melegszendvicsünk várnak rád.
+          Frissülj fel a játék közben! Kiváló italok, kávék, sörök és ínycsiklandó meleg ételek, snackek várnak rád.
         </p>
       </div>
 
@@ -69,13 +65,13 @@ export default function Menu() {
       <div className="flex flex-col md:flex-row items-center justify-between gap-6 mb-10 pb-6 border-b border-slate-800/60">
         
         {/* Categories Tab list */}
-        <div className="flex flex-wrap gap-2 justify-center md:justify-start w-full md:w-auto">
+        <div className="flex gap-2 justify-center md:justify-start w-full md:w-auto">
           {categories.map((cat) => (
             <button
               key={cat.id}
               id={`menu-cat-${cat.id}`}
               onClick={() => setSelectedCategory(cat.id)}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all ${
+              className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all ${
                 selectedCategory === cat.id
                   ? 'bg-emerald-500 text-slate-950 font-black shadow-md shadow-emerald-500/10'
                   : 'bg-slate-950/60 text-slate-300 hover:text-white border border-slate-850 hover:border-slate-800'
@@ -92,7 +88,7 @@ export default function Menu() {
           <input
             type="text"
             id="menu-search-input"
-            placeholder="Keresés az étlapon..."
+            placeholder="Keresés a kínálatban..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full bg-slate-950/80 border border-slate-800 rounded-xl pl-10 pr-4 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500 placeholder:text-slate-600 font-medium"
@@ -147,9 +143,9 @@ export default function Menu() {
                 </div>
 
                 <div className="flex items-center justify-between border-t border-slate-800/40 pt-3 mt-3">
-                  <span className="text-xs font-mono text-slate-500">Egységár</span>
+                  <span className="text-xs font-mono text-slate-500">Ár</span>
                   <span className="font-sans font-black text-lg text-white group-hover:scale-105 transition-all">
-                    {item.price.toLocaleString('hu-HU')} Ft
+                    {typeof item.price === 'number' ? `${item.price.toLocaleString('hu-HU')} Ft` : `${item.price} Ft`}
                   </span>
                 </div>
 
@@ -160,23 +156,25 @@ export default function Menu() {
       ) : (
         <div className="text-center py-16 bg-slate-950/20 rounded-2xl border border-dashed border-slate-800">
           <p className="text-sm text-slate-500 font-mono">
-            Nem találtunk ilyen tételt az étlapon. Kérlek próbálkozz más kifejezéssel!
+            Nem találtunk ilyen tételt a kínálatban. Kérlek próbálkozz más kifejezéssel!
           </p>
         </div>
       )}
 
-      {/* Special Offer Alert Banner */}
-      <div className="mt-12 p-6 rounded-2xl bg-gradient-to-r from-emerald-500/10 to-teal-500/10 border border-emerald-500/20 flex flex-col md:flex-row items-center justify-between gap-6 shadow-md shadow-emerald-500/5">
-        <div className="space-y-1 text-center md:text-left">
-          <span className="text-[10px] font-mono font-bold uppercase text-emerald-400 tracking-wider block">Ajánlatunk a Bajnokoknak!</span>
-          <h4 className="font-bold text-base text-white">Próbáld ki a Helyi Kedvencet! 🥪</h4>
-          <p className="text-xs text-slate-400 max-w-xl font-sans">
-            A ropogós, házi melegszendvicsünk (sonkás-gombás-sajtos / szalámis-sajtos) legendás hírű Újbudán. Kérd hideg Soproni vagy Heineken csapolt sörrel!
-          </p>
-        </div>
-        <div className="text-center font-mono">
-          <span className="text-xs text-slate-500 block">Kombó ár kb.</span>
-          <span className="text-2xl font-black text-emerald-400">2080 Ft</span>
+      {/* Important Information / Notes Banner */}
+      <div className="mt-12 p-6 rounded-2xl bg-slate-950/60 border border-slate-800 flex flex-col md:flex-row items-center justify-between gap-6 shadow-md">
+        <div className="space-y-3 text-center md:text-left w-full">
+          <span className="text-[10px] font-mono font-bold uppercase text-emerald-400 tracking-wider block">Fontos információk / Megjegyzések</span>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1 text-slate-300">
+            <div className="flex items-center gap-2.5 bg-slate-900/50 p-3.5 rounded-xl border border-slate-800/50">
+              <AlertCircle className="w-5 h-5 text-emerald-400 shrink-0" />
+              <p className="text-xs font-semibold leading-relaxed">+50 Ft DRS (visszaváltási díj) az italokra.</p>
+            </div>
+            <div className="flex items-center gap-2.5 bg-slate-900/50 p-3.5 rounded-xl border border-slate-800/50">
+              <AlertCircle className="w-5 h-5 text-emerald-400 shrink-0" />
+              <p className="text-xs font-semibold leading-relaxed">Melegétel mindennap 20:00-ig rendelhető.</p>
+            </div>
+          </div>
         </div>
       </div>
 
