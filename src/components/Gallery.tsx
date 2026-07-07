@@ -417,18 +417,7 @@ export default function Gallery() {
                     </div>
                   </div>
 
-                  {/* Bottom Card Labels */}
-                  <div className="relative p-4 space-y-1 text-left z-10 pointer-events-none">
-                    <span className="text-[9px] font-mono uppercase tracking-widest text-emerald-400 font-bold block">
-                      Fotó
-                    </span>
-                    <h4 className="text-sm font-extrabold text-white tracking-tight group-hover:text-emerald-300 transition-colors line-clamp-1 font-sans">
-                      {item.title}
-                    </h4>
-                    <p className="text-[11px] text-slate-300 font-sans line-clamp-2 leading-relaxed opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-y-1 group-hover:translate-y-0">
-                      {item.description}
-                    </p>
-                  </div>
+                  {/* No bottom text labels on cards for a cleaner visual look */}
                 </motion.div>
               ))}
             </motion.div>

@@ -58,7 +58,7 @@ export default function About() {
     { days: 'Szerda', hours: '14:00 - 22:00' },
     { days: 'Csütörtök', hours: '14:00 - 23:00' },
     { days: 'Péntek', hours: '14:00 - 23:00' },
-    { days: 'Szombat', hours: '14:00 - 23:00' },
+    { days: 'Szombat', hours: '14:00 - 22:00' },
     { days: 'Vasárnap', hours: 'Zárva' },
   ];
 
@@ -115,7 +115,7 @@ export default function About() {
                 <div>
                   <h4 className="font-semibold text-sm text-white">E-mail</h4>
                   <p className="text-xs text-slate-400 font-mono leading-relaxed pt-1">
-                    <a href="mailto:info@club11ujbuda.hu" className="hover:text-emerald-400 transition-colors">info@club11ujbuda.hu</a>
+                    <a href="mailto:club11buda@gmail.com" className="hover:text-emerald-400 transition-colors">club11buda@gmail.com</a>
                   </p>
                 </div>
               </div>

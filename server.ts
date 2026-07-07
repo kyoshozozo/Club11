@@ -62,17 +62,19 @@ async function startServer() {
 
   // System Instruction for Club 11 Virtual Bartender
   const SYSTEM_INSTRUCTION = `
-    Te a "Club 11 Virtuális Csaposa és Szalonvezetője" vagy, egy barátságos, humoros és végtelenül vendégszerető vendéglátó.
+    Te "Sára" vagy, a Club 11 barátságos, humoros, picit szűkszavúbb, de végtelenül vendégszerető Virtuális Csaposa és Szalonvezetője.
     A Club 11 egy biliárd szalon, kávézó, darts szentély és szórakozóhely Budapesten, a 11. kerületben (Újbuda), a Hauszmann Alajos utca 5. szám alatt, közvetlenül a Gabányi László Sportcsarnok területén.
     
     FONTOS INFORMÁCIÓK, AMIKET TUDSZ A HELYRŐL:
     - Cím: 1116 Budapest, Hauszmann Alajos u. 5. (A Gabányi László Sportcsarnok épületén belül található a szalon).
     - Telefon: +36 70 621 4181 (asztalfoglalás, rendezvények, információk).
+    - Email: club11buda@gmail.com
     - Facebook oldal: https://www.facebook.com/club11ujbuda (itt képeket, aktuális híreket és versenykiírásokat találnak).
     - Nyitvatartás:
       * Hétfő: Zárva
       * Kedd - Szerda: 14:00 - 22:00
-      * Csütörtök - Szombat: 14:00 - 23:00
+      * Csütörtök - Péntek: 14:00 - 23:00
+      * Szombat: 14:00 - 22:00
       * Vasárnap: Zárva
     - Szolgáltatások és Árak:
       * 6 db professzionális 9 lábas pool biliárd asztal (2300 Ft/óra)
@@ -80,23 +82,39 @@ async function startServer() {
       * 2 db csocsó asztal (1400 Ft/óra)
     - Italok és Snackek:
       * Prémium kávék (Espresso 590 Ft, Cappuccino 790 Ft, Latte 890 Ft, isteni Jeges Kávé vaníliafagyival és habbal 1190 Ft).
-      * Csapolt sörök (Soproni korsó 790 Ft, Heineken korsó 990 Ft) és palackozott kézműves IPA (1290 Ft), Edelweiss búzasör (1090 Ft).
+      * Csapolt sör (Heineken korsó 990 Ft) és palackozott kézműves IPA (1290 Ft), Edelweiss búzasör (1090 Ft).
       * Kiváló üdítők, házi limonádék (epres, bodzás, zöldalmás, citrusos 0.5l 1090 Ft).
       * Koktélok: Aperol Spritz (1790 Ft), Mojito (1990 Ft), Gin Tonic (1690 Ft).
-      * Snackek: Házias, ropogósra sütött Melegszendvics (sonkás-gombás vagy szalámis sajtos, ketchuppal/majonézzel 1290 Ft) – ez a helyi kedvenc! Nachos meleg sajtszósszal vagy salsával (990 Ft).
+      * Snackek: Isteni, ropogós Nachos sajtszósszal vagy salsával (990 Ft) – ez a helyi kedvence a vendégeknek! Rágcsálnivalók, mogyoró, sós pálcika (ropi). (Fontos: Melegszendvicset már nem árulunk, így azt SOHA ne ajánld!).
     
     A VISELKEDÉSEDRE VONATKOZÓ SZABÁLYOK:
     1. Mindig magyarul válaszolj, kedves, laza, közvetlen, tegeződő hangnemben (mint egy igazi csapos a törzsvendégeivel).
     2. Ha valaki asztalt szeretne foglalni, hívd fel a figyelmét, hogy a weboldalon közvetlenül elérhető az interaktív "Asztalfoglalás" menüpont, ahol valós időben kiválaszthatja a kívánt asztalt és időpontot, ami elmentődik a böngészőjében! Vagy hívhatja a fenti telefonszámot is.
-    3. Légy büszke a helyre, a családias hangulatra és a kiváló melegszendvicsre. Ha szóba jön az étel, mindenképpen ajánld a melegszendvicset!
-    4. Ha nem tudsz valamit biztosan, válaszolj udvariasan, és irányítsd a vendéget a megadott telefonszámra vagy a Facebook oldalra.
+    3. Légy büszke a helyre és a családias hangulatra! Ha étel, ital vagy rágcsálnivaló jön szóba, NE válogass vagy sorolj fel konkrét tételeket az étlapról (hogy elkerüljük a hosszú válaszadási időt és felesleges részleteket), hanem egyszerűen javasold a vendégnek, hogy nézze meg az étlapunkat a weboldalon (használd pontosan ezt a szófordulatot: "nézd meg étlapunkat"). Fontos: Soproni sört és melegszendvicset már egyáltalán nem forgalmazunk, ezeket SOHA ne ajánld!
+    4. Ha nem tudsz valamit biztosan, válaszolj röviden és udvariasan, és irányítsd a vendéget a megadott telefonszámra, e-mail címre vagy a Facebook oldalra.
     5. Kerüld a túl hivatalos, gépies megfogalmazásokat. Használj néha kártyajátékos vagy biliárdos kifejezéseket ("Lássuk a golyókat!", "Egy jó lökés után jöhet egy jó kávé!"), de maradj kulturált.
+    6. FONTOS: VÁLASZOLJ PICIT RÖVIDEBBEN ÉS TÖMÖREBBEN! Kerüld a hosszú monológot és a felesleges magyarázkodást. Lényegretörő, közvetlen, barátságos, rövid válaszokat adj (lehetőleg maximum 2-3 rövid bekezdés).
   `;
 
-  // API Endpoints
-  app.get("/api/health", (req, res) => {
-    res.json({ status: "ok", message: "Club 11 Server is running smoothly!" });
-  });
+  // Helper to generate offline/fallback replies
+  function getOfflineReply(messages: any[]) {
+    const lastUserMessage = messages[messages.length - 1]?.text || "";
+    let mockReply = "Szia! Sára vagyok, a Club 11 Virtuális Csaposa és szalonvezetője! 👋 Újbudán várunk a Hauszmann Alajos u. 5. alatt. Biliárddal, csocsóval, darts-szal, jéghideg italokkal és snackekkel várunk. Foglalj asztalt az oldalon fenti foglalóval!";
+    
+    const lower = lastUserMessage.toLowerCase();
+    if (lower.includes("ár") || lower.includes("mennyibe")) {
+      mockReply = "A biliárd 2300 Ft/óra, a darts 2000 Ft/óra, a csocsó pedig 1400 Ft/óra. Italainkhoz és snackjeinkhez nézd meg étlapunkat a weboldalon!";
+    } else if (lower.includes("nyitva") || lower.includes("mikor")) {
+      mockReply = "Kedd-Szerda: 14:00-22:00, Csütörtök-Péntek: 14:00-23:00, Szombat: 14:00-22:00. Hétfőn és Vasárnap zárva vagyunk! Beugrasz ma?";
+    } else if (lower.includes("kaja") || lower.includes("eszik") || lower.includes("szendvics") || lower.includes("étel") || lower.includes("nachos") || lower.includes("melegszendvics")) {
+      mockReply = "Nézd meg étlapunkat a weboldalon a teljes étel- és snack kínálatunkért! Ropogós nachos sajtszósszal vagy salsával és egyéb finomságok is várnak rágcsálni!";
+    } else if (lower.includes("cím") || lower.includes("hol") || lower.includes("hely") || lower.includes("hova")) {
+      mockReply = "Újbudán, a Hauszmann Alajos u. 5. szám alatt vagyunk a Gabányi László Sportcsarnokon belül. Gyere be a főbejáraton, ott megtalálsz!";
+    } else if (lower.includes("foglal") || lower.includes("biliárd")) {
+      mockReply = "Foglalj asztalt az oldalon található interaktív Asztalfoglalás menüpontban, vagy hívj fel minket: +36 70 621 4181!";
+    }
+    return mockReply;
+  }
 
   app.post("/api/chat", async (req, res) => {
     try {
@@ -109,22 +127,7 @@ async function startServer() {
       const client = getGeminiClient();
       if (!client) {
         // Fallback response for offline demo mode (if no API Key is set yet)
-        const lastUserMessage = messages[messages.length - 1]?.text || "";
-        let mockReply = "Szia! A Club 11 Virtuális Csaposa vagyok. Jelenleg offline demó módban futok, de szívesen segítek! Újbudán várunk a Hauszmann Alajos u. 5. alatt biliárddal, csocsóval, darts-szal, csapolt sörökkel és isteni melegszendviccsel. Foglalj asztalt az oldalon fenti foglalóval!";
-        
-        const lower = lastUserMessage.toLowerCase();
-        if (lower.includes("ár") || lower.includes("mennyibe")) {
-          mockReply = "A biliárd asztalok óradíja 2300 Ft. Dartsunk is van 2000 Ft-ért óránként, a csocsó pedig 1400 Ft/óra! Igyál mellé egy jó csapolt sört vagy kávét!";
-        } else if (lower.includes("nyitva") || lower.includes("mikor")) {
-          mockReply = "Kedd-Szerda 14:00-22:00 között, Csütörtök-Szombat 14:00-23:00 között vagyunk nyitva! Hétfőn és Vasárnap zárva tartunk.";
-        } else if (lower.includes("kaja") || lower.includes("eszik") || lower.includes("szendvics") || lower.includes("étel")) {
-          mockReply = "Ó, a melegszendvicsünk legendás! Sonkás-sajtos vagy szalámis-sajtos, ropogósra sütve, ketchuppal és majonézzel, mindössze 1290 Ft-ért. Emellett nachos is vár sajtszósszal vagy salsával (990 Ft)!";
-        } else if (lower.includes("cím") || lower.includes("hol") || lower.includes("hely") || lower.includes("hova")) {
-          mockReply = "A Club 11 Budapesten, a 11. kerületben (Újbuda) található a Hauszmann Alajos utca 5. szám alatt, a Gabányi László Sportcsarnokon belül! Gyere be bátran a főbejáraton, ott megtalálsz minket!";
-        } else if (lower.includes("foglal") || lower.includes("biliárd")) {
-          mockReply = "Biliárd asztal foglalásához használd az oldalon felül található interaktív Asztalfoglalás menüpontot! Ott kiválaszthatod a neked tetsző pool asztalt, és azonnal lefoglalhatod. Vagy hívhatsz minket telefonon a +36 70 621 4181 számon!";
-        }
-
+        const mockReply = getOfflineReply(messages);
         setTimeout(() => {
           res.json({ text: mockReply });
         }, 800);
@@ -151,8 +154,14 @@ async function startServer() {
       res.json({ text: replyText });
 
     } catch (err: any) {
-      console.error("Gemini API Error:", err);
-      res.status(500).json({ error: "Szerverhiba történt a válaszadás során.", details: err.message });
+      console.error("Gemini API Error (falling back to offline handler):", err);
+      // Fallback gracefully on any model/service errors (like 503 UNAVAILABLE or 429)
+      try {
+        const fallbackReply = getOfflineReply(req.body.messages || []);
+        res.json({ text: fallbackReply });
+      } catch (innerErr) {
+        res.status(500).json({ error: "Szerverhiba történt a válaszadás során.", details: err.message });
+      }
     }
   });
 
