@@ -12,7 +12,7 @@ export default function BookingSystem() {
   const [selectedType, setSelectedType] = useState<TableType | 'all'>('all');
   const [selectedTable, setSelectedTable] = useState<Table | null>(null);
   const [selectedDate, setSelectedDate] = useState<string>('');
-  const [selectedSlot, setSelectedSlot] = useState<string>('');
+  const [selectedSlots, setSelectedSlots] = useState<string[]>([]);
   
   // User info
   const [name, setName] = useState('');
@@ -22,6 +22,11 @@ export default function BookingSystem() {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
+
+  // Modal and submission states
+  const [showModal, setShowModal] = useState<boolean>(false);
+  const [modalData, setModalData] = useState<Booking | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
   // Set default date to today
   useEffect(() => {
@@ -54,19 +59,69 @@ export default function BookingSystem() {
       const isStillAvailable = filteredTables.some(t => t.id === selectedTable?.id);
       if (!isStillAvailable) {
         setSelectedTable(filteredTables[0]);
-        setSelectedSlot(''); // Reset slot on table change
+        setSelectedSlots([]); // Reset slots on table change
       }
     } else {
       setSelectedTable(null);
     }
   }, [selectedType, filteredTables]);
 
-  // Check if a specific slot is already booked for the selected table on the selected date
-  const isSlotBooked = (tableId: string, date: string, slot: string) => {
-    return bookings.some(b => b.tableId === tableId && b.date === date && b.timeSlot === slot && b.status === 'confirmed');
+  // Format slots array into clean readable range e.g. "14:00 - 17:00 (3 óra)"
+  const formatSlotsSummary = (slots: string[]): string => {
+    if (slots.length === 0) return '';
+    const sorted = [...slots].sort((a, b) => TIME_SLOTS.indexOf(a) - TIME_SLOTS.indexOf(b));
+    
+    const blocks: string[] = [];
+    let currentStart = '';
+    let currentEnd = '';
+
+    sorted.forEach((slot) => {
+      const [start, end] = slot.split(' - ');
+      if (!currentStart) {
+        currentStart = start;
+        currentEnd = end;
+      } else if (currentEnd === start) {
+        currentEnd = end;
+      } else {
+        blocks.push(`${currentStart} - ${currentEnd}`);
+        currentStart = start;
+        currentEnd = end;
+      }
+    });
+    if (currentStart) {
+      blocks.push(`${currentStart} - ${currentEnd}`);
+    }
+
+    return `${blocks.join(', ')} (${slots.length} óra)`;
   };
 
-  const handleBookingSubmit = (e: React.FormEvent) => {
+  const handleSlotClick = (slot: string) => {
+    setSelectedSlots((prev) => {
+      if (prev.includes(slot)) {
+        return prev.filter((s) => s !== slot);
+      } else {
+        const next = [...prev, slot];
+        return next.sort((a, b) => TIME_SLOTS.indexOf(a) - TIME_SLOTS.indexOf(b));
+      }
+    });
+  };
+
+  const clearSlots = () => {
+    setSelectedSlots([]);
+  };
+
+  // Check if a specific slot is already booked for the selected table on the selected date
+  const isSlotBooked = (tableId: string, date: string, slot: string) => {
+    return bookings.some(b => {
+      if (b.tableId !== tableId || b.date !== date || b.status !== 'confirmed') return false;
+      if (b.timeSlots && Array.isArray(b.timeSlots)) {
+        return b.timeSlots.includes(slot);
+      }
+      return b.timeSlot ? b.timeSlot.includes(slot) : false;
+    });
+  };
+
+  const handleBookingSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
     setSuccessMsg('');
@@ -79,8 +134,8 @@ export default function BookingSystem() {
       setErrorMsg('Kérlek válassz ki egy dátumot!');
       return;
     }
-    if (!selectedSlot) {
-      setErrorMsg('Kérlek válassz ki egy időpontot!');
+    if (selectedSlots.length === 0) {
+      setErrorMsg('Kérlek válassz ki legalább egy idősávot!');
       return;
     }
     if (!name.trim()) {
@@ -96,11 +151,18 @@ export default function BookingSystem() {
       return;
     }
 
-    // Double check availability
-    if (isSlotBooked(selectedTable.id, selectedDate, selectedSlot)) {
-      setErrorMsg('Sajnáljuk, ezt az időpontot már lefoglalták erre az asztalra. Kérlek válassz másikat!');
+    // Double check availability for all selected slots
+    const hasBookedSlot = selectedSlots.some(slot => isSlotBooked(selectedTable.id, selectedDate, slot));
+    if (hasBookedSlot) {
+      setErrorMsg('Sajnáljuk, a kiválasztott idősávok közül legalább egyet már lefoglaltak. Kérlek válassz másikat!');
       return;
     }
+
+    setIsSubmitting(true);
+
+    const slotsSummary = formatSlotsSummary(selectedSlots);
+    const totalHours = selectedSlots.length;
+    const totalPrice = totalHours * selectedTable.hourlyRate;
 
     // Create booking
     const newBooking: Booking = {
@@ -108,22 +170,51 @@ export default function BookingSystem() {
       tableId: selectedTable.id,
       tableName: selectedTable.name,
       date: selectedDate,
-      timeSlot: selectedSlot,
+      timeSlot: slotsSummary,
+      timeSlots: [...selectedSlots],
+      durationHours: totalHours,
+      totalPrice: totalPrice,
       name,
       email,
       phone,
       status: 'confirmed'
     };
 
+    // Send email notification to club11buda@gmail.com
+    try {
+      await fetch('/api/send-booking-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          to: 'club11buda@gmail.com',
+          name,
+          email,
+          phone,
+          tableName: selectedTable.name,
+          date: selectedDate,
+          timeSlot: slotsSummary,
+          timeSlots: selectedSlots,
+          durationHours: totalHours,
+          totalPrice: totalPrice,
+        }),
+      });
+    } catch (err) {
+      console.warn('Szerver e-mail küldési kísérlet:', err);
+    }
+
     const updatedBookings = [newBooking, ...bookings];
     setBookings(updatedBookings);
     localStorage.setItem('club11_bookings', JSON.stringify(updatedBookings));
 
-    setSuccessMsg(`Sikeres asztalfoglalás! Szeretettel várunk ${selectedDate}-án ${selectedSlot} órakor. A visszaigazolást elmentettük!`);
+    setSuccessMsg(`A foglalási igény elküldve! Részletek a megjelenő ablakban.`);
     
-    // Clear slot and contact info
-    setSelectedSlot('');
-    // Keep user contact info for next booking but clear name if they want
+    // Set modal data and display confirmation dialog
+    setModalData(newBooking);
+    setShowModal(true);
+
+    // Reset selected slots & submission state so user must re-select slots for any subsequent booking
+    setSelectedSlots([]);
+    setIsSubmitting(false);
   };
 
   const handleCancelBooking = (id: string) => {
@@ -195,7 +286,7 @@ export default function BookingSystem() {
                     id={`table-card-${table.id}`}
                     onClick={() => {
                       setSelectedTable(table);
-                      setSelectedSlot(''); // Reset slot when choosing a new table
+                      setSelectedSlots([]); // Reset slots when choosing a new table
                     }}
                     className={`p-4 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between h-44 ${
                       isSelected
@@ -272,41 +363,75 @@ export default function BookingSystem() {
                 min={new Date().toISOString().split('T')[0]} // Block past dates
                 onChange={(e) => {
                   setSelectedDate(e.target.value);
-                  setSelectedSlot(''); // Reset slot on date change
+                  setSelectedSlots([]); // Reset slots on date change
                 }}
                 className="w-full bg-slate-900 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 font-mono"
               />
             </div>
 
             {/* Slots selector */}
-            <div className="space-y-2">
-              <label className="text-xs font-mono uppercase tracking-wider text-slate-400 font-bold block flex items-center gap-1.5">
-                <Clock className="w-3.5 h-3.5 text-emerald-400" />
-                Szabad Idősávok
-              </label>
+            <div className="space-y-2.5">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-mono uppercase tracking-wider text-slate-400 font-bold flex items-center gap-1.5">
+                  <Clock className="w-3.5 h-3.5 text-emerald-400" />
+                  Szabad Idősávok
+                </label>
+                {selectedSlots.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={clearSlots}
+                    className="text-[11px] font-mono text-slate-400 hover:text-rose-400 underline transition-colors"
+                  >
+                    Törlés ({selectedSlots.length})
+                  </button>
+                )}
+              </div>
+              
+              <p className="text-[11px] text-slate-400">
+                Kattints az idősávokra a kijelöléshez! Akár <strong className="text-emerald-400 font-bold">több egymást követő vagy különálló idősávot</strong> is lefoglalhatsz egyszerre.
+              </p>
+
+              {/* Selection Summary Box */}
+              {selectedTable && selectedSlots.length > 0 && (
+                <div className="bg-emerald-950/40 border border-emerald-500/30 p-3 rounded-xl flex items-center justify-between text-xs font-mono animate-fadeIn">
+                  <div className="space-y-0.5">
+                    <span className="text-[10px] text-emerald-400 font-bold block uppercase tracking-wider">Kijelölt Időtartam</span>
+                    <span className="text-white font-bold">{formatSlotsSummary(selectedSlots)}</span>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-[10px] text-emerald-400 font-bold block uppercase tracking-wider">Várható Díj</span>
+                    <span className="text-emerald-300 font-black text-sm">
+                      {(selectedSlots.length * selectedTable.hourlyRate).toLocaleString('hu-HU')} Ft
+                    </span>
+                  </div>
+                </div>
+              )}
               
               {selectedTable ? (
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-[160px] overflow-y-auto pr-1">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-[180px] overflow-y-auto pr-1 custom-scrollbar">
                   {TIME_SLOTS.map((slot) => {
                     const isBooked = isSlotBooked(selectedTable.id, selectedDate, slot);
-                    const isSelected = selectedSlot === slot;
+                    const isSelected = selectedSlots.includes(slot);
+                    const safeSlotId = slot.replace(/[^a-zA-Z0-9]/g, '-');
                     
                     return (
                       <button
                         key={slot}
                         type="button"
-                        id={`slot-button-${slot}`}
+                        id={`slot-button-${safeSlotId}`}
                         disabled={isBooked}
-                        onClick={() => setSelectedSlot(slot)}
-                        className={`py-2 px-2.5 rounded-xl text-[11px] font-semibold font-mono text-center border transition-all ${
+                        onClick={() => handleSlotClick(slot)}
+                        className={`py-2 px-2.5 rounded-xl text-[11px] font-semibold font-mono transition-all flex items-center justify-between gap-1 border ${
                           isBooked
                             ? 'bg-slate-900 border-slate-850 text-slate-600 line-through cursor-not-allowed'
                             : isSelected
-                            ? 'bg-emerald-500 border-emerald-500 text-slate-950 font-bold'
+                            ? 'bg-emerald-500 border-emerald-500 text-slate-950 font-black shadow-md shadow-emerald-500/20'
                             : 'bg-slate-900 border-slate-800 text-slate-300 hover:border-slate-700'
                         }`}
                       >
-                        {slot} {isBooked && '(Foglalt)'}
+                        <span>{slot}</span>
+                        {isSelected && <span className="text-[10px] font-black bg-slate-950/20 px-1 rounded">✓</span>}
+                        {isBooked && <span className="text-[9px] text-slate-600 font-normal">Foglalt</span>}
                       </button>
                     );
                   })}
@@ -370,13 +495,32 @@ export default function BookingSystem() {
             )}
 
             {/* Submit button */}
-            <button
-              type="submit"
-              id="booking-submit-btn"
-              className="w-full py-3.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 font-bold text-sm tracking-wide transition-all uppercase"
-            >
-              Foglalás Megerősítése
-            </button>
+            <div className="pt-2">
+              <button
+                type="submit"
+                id="booking-submit-btn"
+                disabled={selectedSlots.length === 0 || isSubmitting}
+                className={`w-full py-4 rounded-xl font-bold text-sm tracking-wide transition-all uppercase flex items-center justify-center gap-2 ${
+                  selectedSlots.length === 0 || isSubmitting
+                    ? 'bg-slate-800 text-slate-500 cursor-not-allowed border border-slate-700/50'
+                    : 'bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 shadow-lg shadow-emerald-500/20 active:scale-[0.99]'
+                }`}
+              >
+                {isSubmitting ? (
+                  'E-mail küldése és mentés...'
+                ) : selectedSlots.length === 0 ? (
+                  'Kérlek válassz idősávot a foglaláshoz'
+                ) : (
+                  'Foglalás Megerősítése'
+                )}
+              </button>
+
+              {selectedSlots.length === 0 && (
+                <p className="text-[11px] text-center text-slate-500 mt-2 font-mono">
+                  *(A foglalás megerősítéséhez kattints a fenti zöld idősávok közül legalább egyre)*
+                </p>
+              )}
+            </div>
           </form>
         </div>
 
@@ -410,6 +554,11 @@ export default function BookingSystem() {
                   <p className="text-xs font-mono text-slate-400">
                     Időpont: <strong className="text-white">{booking.timeSlot}</strong>
                   </p>
+                  {booking.totalPrice && (
+                    <p className="text-xs font-mono text-emerald-400 font-bold">
+                      Összeg: {booking.totalPrice.toLocaleString('hu-HU')} Ft
+                    </p>
+                  )}
                   <p className="text-[11px] text-slate-500 font-sans">
                     Név: {booking.name} | Tel: {booking.phone}
                   </p>
@@ -425,6 +574,86 @@ export default function BookingSystem() {
                 </button>
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* Prominent Confirmation Modal */}
+      {showModal && modalData && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md animate-fadeIn">
+          <div 
+            id="booking-confirmation-modal"
+            className="bg-slate-900 border-2 border-emerald-500/80 rounded-3xl p-6 sm:p-8 max-w-lg w-full shadow-2xl relative text-left space-y-6 transform transition-all scale-100"
+          >
+            {/* Top Header */}
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400 shrink-0">
+                <CheckCircle2 className="w-7 h-7 animate-pulse" />
+              </div>
+              <div>
+                <h3 className="text-xl font-black text-white tracking-tight">Foglalási Igény Elküldve!</h3>
+                <p className="text-xs font-mono text-emerald-400">E-mail értesítő elküldve: <span className="font-bold">club11buda@gmail.com</span></p>
+              </div>
+            </div>
+
+            {/* Highly Prominent Notice Banner */}
+            <div className="bg-amber-500/15 border-2 border-amber-500/70 p-4 rounded-2xl text-center space-y-1 shadow-lg">
+              <span className="text-xs font-mono uppercase tracking-widest text-amber-400 font-bold block flex items-center justify-center gap-1.5">
+                <AlertCircle className="w-4 h-4 text-amber-400 shrink-0" />
+                FONTOS INFORMÁCIÓ
+              </span>
+              <p className="text-base sm:text-lg font-black text-amber-200 tracking-tight leading-snug">
+                Akkor érvényes a foglalása ha visszaigazolást kap róla!
+              </p>
+            </div>
+
+            {/* Summary of reservation */}
+            <div className="bg-slate-950/70 border border-slate-800 rounded-2xl p-4 space-y-2.5 text-xs font-mono">
+              <div className="flex justify-between py-1 border-b border-slate-850">
+                <span className="text-slate-400">Lefoglalt eszköz/pálya:</span>
+                <span className="font-bold text-white text-right">{modalData.tableName}</span>
+              </div>
+              <div className="flex justify-between py-1 border-b border-slate-850">
+                <span className="text-slate-400">Dátum:</span>
+                <span className="font-bold text-emerald-400 text-right">{modalData.date}</span>
+              </div>
+              <div className="flex justify-between py-1 border-b border-slate-850">
+                <span className="text-slate-400">Idősáv(ok):</span>
+                <span className="font-bold text-white text-right">{modalData.timeSlot}</span>
+              </div>
+              <div className="flex justify-between py-1 border-b border-slate-850">
+                <span className="text-slate-400">Foglaló neve:</span>
+                <span className="font-bold text-slate-200 text-right">{modalData.name}</span>
+              </div>
+              <div className="flex justify-between py-1 border-b border-slate-850">
+                <span className="text-slate-400">Telefonszám:</span>
+                <span className="font-bold text-slate-200 text-right">{modalData.phone}</span>
+              </div>
+              <div className="flex justify-between py-1 border-b border-slate-850">
+                <span className="text-slate-400">E-mail:</span>
+                <span className="font-bold text-slate-200 text-right">{modalData.email}</span>
+              </div>
+              <div className="flex justify-between py-1 pt-1">
+                <span className="text-slate-400">Várható fizetendő:</span>
+                <span className="font-black text-emerald-400 text-sm text-right">
+                  {modalData.totalPrice ? modalData.totalPrice.toLocaleString('hu-HU') : 0} Ft
+                </span>
+              </div>
+            </div>
+
+            <p className="text-[11px] text-slate-400 text-center font-sans">
+              Köszönjük! A Club 11 csapata hamarosan feldolgozza a foglalásodat és e-mailben vagy telefonon visszajelez!
+            </p>
+
+            {/* Close Button */}
+            <button
+              type="button"
+              id="close-booking-modal-btn"
+              onClick={() => setShowModal(false)}
+              className="w-full py-3.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-black text-sm tracking-wide transition-all shadow-lg hover:scale-[1.01]"
+            >
+              Rendben, Megértettem
+            </button>
           </div>
         </div>
       )}

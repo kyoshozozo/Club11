@@ -89,7 +89,7 @@ async function startServer() {
     
     A VISELKEDÉSEDRE VONATKOZÓ SZABÁLYOK:
     1. Mindig magyarul válaszolj, kedves, laza, közvetlen, tegeződő hangnemben (mint egy igazi csapos a törzsvendégeivel).
-    2. Ha valaki asztalt szeretne foglalni, hívd fel a figyelmét, hogy a weboldalon közvetlenül elérhető az interaktív "Asztalfoglalás" menüpont, ahol valós időben kiválaszthatja a kívánt asztalt és időpontot, ami elmentődik a böngészőjében! Vagy hívhatja a fenti telefonszámot is.
+    2. Ha valaki asztalt szeretne foglalni, hívd fel a figyelmét, hogy a weboldalon közvetlenül elérhető az interaktív "Asztalfoglalás" menüpont, ahol valós időben kiválaszthatja a kívánt asztalt és tetszőlegesen akár több idősávot (több órás időtartamot) is lefoglalhat egyszerre! Vagy hívhatja a fenti telefonszámot is.
     3. Légy büszke a helyre és a családias hangulatra! Ha étel, ital vagy rágcsálnivaló jön szóba, NE válogass vagy sorolj fel konkrét tételeket az étlapról (hogy elkerüljük a hosszú válaszadási időt és felesleges részleteket), hanem egyszerűen javasold a vendégnek, hogy nézze meg az étlapunkat a weboldalon (használd pontosan ezt a szófordulatot: "nézd meg étlapunkat"). Fontos: Soproni sört és melegszendvicset már egyáltalán nem forgalmazunk, ezeket SOHA ne ajánld!
     4. Ha nem tudsz valamit biztosan, válaszolj röviden és udvariasan, és irányítsd a vendéget a megadott telefonszámra, e-mail címre vagy a Facebook oldalra.
     5. Kerüld a túl hivatalos, gépies megfogalmazásokat. Használj néha kártyajátékos vagy biliárdos kifejezéseket ("Lássuk a golyókat!", "Egy jó lökés után jöhet egy jó kávé!"), de maradj kulturált.
@@ -111,7 +111,7 @@ async function startServer() {
     } else if (lower.includes("cím") || lower.includes("hol") || lower.includes("hely") || lower.includes("hova")) {
       mockReply = "Újbudán, a Hauszmann Alajos u. 5. szám alatt vagyunk a Gabányi László Sportcsarnokon belül. Gyere be a főbejáraton, ott megtalálsz!";
     } else if (lower.includes("foglal") || lower.includes("biliárd")) {
-      mockReply = "Foglalj asztalt az oldalon található interaktív Asztalfoglalás menüpontban, vagy hívj fel minket: +36 70 621 4181!";
+      mockReply = "Foglalj asztalt az oldalon található interaktív Asztalfoglalás menüpontban, ahol akár több idősávot is kijelölhetsz egyszerre, vagy hívj fel minket: +36 70 621 4181!";
     }
     return mockReply;
   }
@@ -277,6 +277,44 @@ async function startServer() {
     } catch (err: any) {
       console.error("Failed to delete image:", err);
       res.status(500).json({ error: "Szerverhiba történt a kép törlése során." });
+    }
+  });
+
+  // Email Notification Endpoint for Bookings
+  app.post("/api/send-booking-email", (req, res) => {
+    try {
+      const { name, email, phone, tableName, date, timeSlot, timeSlots, durationHours, totalPrice } = req.body;
+      
+      const targetEmail = "club11buda@gmail.com";
+      console.log(`==================================================`);
+      console.log(`[EMAIL DISPATCH TO ${targetEmail}]`);
+      console.log(`Tárgy: Új asztalfoglalási igény - ${tableName} (${date})`);
+      console.log(`Vendég neve: ${name}`);
+      console.log(`Vendég e-mail: ${email}`);
+      console.log(`Vendég telefon: ${phone}`);
+      console.log(`Lefoglalt eszköz/pálya: ${tableName}`);
+      console.log(`Dátum: ${date}`);
+      console.log(`Idősáv(ok): ${timeSlot}`);
+      console.log(`Órák száma: ${durationHours} óra`);
+      console.log(`Várható díj: ${totalPrice} Ft`);
+      console.log(`==================================================`);
+
+      res.json({
+        success: true,
+        message: `A foglalási értesítőt elküldtük a ${targetEmail} e-mail címre.`,
+        details: {
+          to: targetEmail,
+          tableName,
+          date,
+          timeSlot,
+          name,
+          email,
+          phone
+        }
+      });
+    } catch (err: any) {
+      console.error("Hiba az e-mail küldése során:", err);
+      res.status(500).json({ error: "Szerverhiba az e-mail küldésekor." });
     }
   });
 

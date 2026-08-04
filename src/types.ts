@@ -8,7 +8,10 @@ export interface Booking {
   tableId: string;
   tableName: string;
   date: string;
-  timeSlot: string; // e.g., "14:00 - 15:00"
+  timeSlot: string; // e.g., "14:00 - 17:00 (3 óra)"
+  timeSlots?: string[]; // e.g., ["14:00 - 15:00", "15:00 - 16:00"]
+  durationHours?: number; // e.g., 3
+  totalPrice?: number; // total price in HUF
   name: string;
   email: string;
   phone: string;
