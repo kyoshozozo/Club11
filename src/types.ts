@@ -3,31 +3,35 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+export type TableType = 'pool' | 'darts' | 'foosball';
+
+// A vendég csak a játéktípust választja, a konkrét asztalt a személyzet osztja ki.
+export interface TableCategory {
+  type: TableType;
+  name: string;
+  description: string;
+  hourlyRate: number; // in HUF
+  count: number; // ennyi asztal/gép van ebből, egy idősávban legfeljebb ennyi foglalás lehet
+}
+
 export interface Booking {
   id: string;
-  tableId: string;
-  tableName: string;
-  date: string;
-  timeSlot: string; // e.g., "14:00 - 17:00 (3 óra)"
-  timeSlots?: string[]; // e.g., ["14:00 - 15:00", "15:00 - 16:00"]
-  durationHours?: number; // e.g., 3
-  totalPrice?: number; // total price in HUF
+  type: TableType;
+  typeName: string;
+  date: string; // YYYY-MM-DD
+  timeSlots: string[]; // e.g., ["14:00 - 15:00", "15:00 - 16:00"]
+  timeSlot: string; // e.g., "14:00 - 16:00 (2 óra)"
+  durationHours: number;
+  totalPrice: number; // total price in HUF
   name: string;
   email: string;
   phone: string;
-  status: 'confirmed' | 'cancelled';
+  createdAt: string;
+  cancelToken?: string; // csak a foglaló böngészőjében van meg, ezzel mondható le
 }
 
-export type TableType = 'pool' | 'rex' | 'darts' | 'foosball';
-
-export interface Table {
-  id: string;
-  name: string;
-  type: TableType;
-  description: string;
-  hourlyRate: number; // in HUF
-  spots: number; // e.g., 1 for table, 2 for darts
-}
+// Nyitvatartás egy napra: nyitás és zárás egész órában, vagy null ha zárva
+export type DayHours = { open: number; close: number } | null;
 
 export interface MenuItem {
   id: string;

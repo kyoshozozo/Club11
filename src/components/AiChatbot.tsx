@@ -5,6 +5,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { MessageSquare, X, Send, User, Sparkles, Coffee } from 'lucide-react';
+import { OPENING_HOURS, DAY_NAMES, WEEK_ORDER, formatDayHours } from '../data';
 
 interface AiChatbotProps {
   isOpen: boolean;
@@ -71,7 +72,7 @@ export default function AiChatbot({ isOpen, setIsOpen, onNavigateToBooking }: Ai
       const errorMsg = {
         id: `msg-${Date.now() + 1}`,
         role: 'model',
-        text: 'Szia! Jelenleg hálózati hiba lépett fel, de a Club 11 mindig nyitva áll előtted! Kedd-Szerda 14:00-22:00, Csütörtök-Péntek 14:00-23:00, Szombat 14:00-22:00 között várunk (Hétfőn és Vasárnap zárva). Hívj minket telefonon: +36 70 621 4181!',
+        text: `Szia! Jelenleg hálózati hiba lépett fel. Nyitvatartásunk: ${WEEK_ORDER.map(day => `${DAY_NAMES[day]}: ${formatDayHours(OPENING_HOURS[day])}`).join(', ')}. Hívj minket telefonon: +36 70 621 4181!`,
         timestamp: new Date().toLocaleTimeString('hu-HU', { hour: '2-digit', minute: '2-digit' })
       };
       setMessages(prev => [...prev, errorMsg]);

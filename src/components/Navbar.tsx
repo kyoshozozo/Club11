@@ -3,8 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React from 'react';
-import { Sparkles, MapPin, Phone, Clock, MessageSquare, Coffee, Layers, BookOpen, Camera } from 'lucide-react';
+import React, { useState } from 'react';
+import { MapPin, Phone, Clock, MessageSquare, Coffee, Layers, BookOpen, Camera, Menu as MenuIcon, X } from 'lucide-react';
 import Club11Logo from './Club11Logo';
 
 interface NavbarProps {
@@ -15,6 +15,8 @@ interface NavbarProps {
 }
 
 export default function Navbar({ activeSection, setActiveSection, isChatOpen, setIsChatOpen }: NavbarProps) {
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
   const navItems = [
     { id: 'home', label: 'Főoldal', icon: Layers },
     { id: 'booking', label: 'Asztalfoglalás', icon: Clock },
@@ -61,7 +63,7 @@ export default function Navbar({ activeSection, setActiveSection, isChatOpen, se
           </div>
 
           {/* Quick Contact & Chat toggle */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
             <a 
               href="tel:+36706214181" 
               className="hidden lg:flex items-center gap-2 text-slate-400 hover:text-white transition-all text-sm font-mono"
@@ -87,9 +89,58 @@ export default function Navbar({ activeSection, setActiveSection, isChatOpen, se
                 <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-emerald-500"></span>
               </span>
             </button>
+
+            {/* Mobile menu toggle (only below md, where the nav items are hidden) */}
+            <button
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              id="mobile-menu-toggle"
+              aria-label={isMobileMenuOpen ? 'Menü bezárása' : 'Menü megnyitása'}
+              aria-expanded={isMobileMenuOpen}
+              aria-controls="mobile-menu"
+              className="md:hidden p-2.5 rounded-xl border border-slate-800 bg-slate-900 text-slate-200 hover:text-white hover:bg-slate-800 transition-all"
+            >
+              {isMobileMenuOpen ? <X className="w-5 h-5" /> : <MenuIcon className="w-5 h-5" />}
+            </button>
           </div>
         </div>
       </div>
+
+      {/* Mobile menu panel */}
+      {isMobileMenuOpen && (
+        <div id="mobile-menu" className="md:hidden border-t border-slate-800 bg-slate-950/95 backdrop-blur-md">
+          <div className="px-4 py-3 space-y-1">
+            {navItems.map((item) => {
+              const Icon = item.icon;
+              const isActive = activeSection === item.id;
+              return (
+                <button
+                  key={item.id}
+                  id={`mobile-nav-link-${item.id}`}
+                  onClick={() => {
+                    setActiveSection(item.id);
+                    setIsMobileMenuOpen(false);
+                  }}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all ${
+                    isActive
+                      ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                      : 'text-slate-300 hover:text-white hover:bg-slate-900 border border-transparent'
+                  }`}
+                >
+                  <Icon className={`w-4 h-4 ${isActive ? 'text-emerald-400' : 'text-slate-400'}`} />
+                  {item.label}
+                </button>
+              );
+            })}
+            <a
+              href="tel:+36706214181"
+              className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-mono text-slate-300 hover:text-white hover:bg-slate-900"
+            >
+              <Phone className="w-4 h-4 text-emerald-400" />
+              +36 70 621 4181
+            </a>
+          </div>
+        </div>
+      )}
     </nav>
   );
 }

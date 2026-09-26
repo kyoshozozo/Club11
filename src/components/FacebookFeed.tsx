@@ -16,27 +16,17 @@ export default function FacebookFeed() {
   const [lastSynced, setLastSynced] = useState<string>('Éppen most');
 
   useEffect(() => {
-    // Load posts state from localStorage if available, or initialize from static POSTS
-    const savedPosts = localStorage.getItem('club11_posts_state');
-    const savedLikes = localStorage.getItem('club11_posts_liked_ids');
-    
-    if (savedPosts) {
-      try {
-        setPosts(JSON.parse(savedPosts));
-      } catch (e) {
-        setPosts(POSTS);
-      }
-    } else {
-      setPosts(POSTS);
+    // A bejegyzések mindig a kódból (POSTS) jönnek, így egy törölt vagy javított bejegyzés
+    // a korábbi látogatóknál sem marad meg; a böngésző csak a saját kedveléseket jegyzi meg.
+    let liked: string[] = [];
+    try {
+      localStorage.removeItem('club11_posts_state');
+      liked = JSON.parse(localStorage.getItem('club11_posts_liked_ids') || '[]');
+    } catch (e) {
+      console.error(e);
     }
-
-    if (savedLikes) {
-      try {
-        setLikedPosts(JSON.parse(savedLikes));
-      } catch (e) {
-        console.error(e);
-      }
-    }
+    setLikedPosts(liked);
+    setPosts(POSTS.map(p => liked.includes(p.id) ? { ...p, likes: p.likes + 1 } : p));
 
     // Set a realistic last-synced timestamp
     const now = new Date();
@@ -71,8 +61,9 @@ export default function FacebookFeed() {
     setLikedPosts(updatedLikes);
     setPosts(updatedPosts);
     
-    localStorage.setItem('club11_posts_liked_ids', JSON.stringify(updatedLikes));
-    localStorage.setItem('club11_posts_state', JSON.stringify(updatedPosts));
+    try {
+      localStorage.setItem('club11_posts_liked_ids', JSON.stringify(updatedLikes));
+    } catch {}
   };
 
   return (

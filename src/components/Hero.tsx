@@ -6,6 +6,10 @@
 import React, { useState, useEffect } from 'react';
 import { Clock, Navigation, ShieldCheck, ArrowRight, Flame } from 'lucide-react';
 import Club11Logo from './Club11Logo';
+import { OPENING_HOURS, budapestNow, MENU_ITEMS } from '../data';
+
+// A kiemelt snack neve és ára az árlistából jön, így nem térhet el tőle
+const FEATURED_SNACK = MENU_ITEMS.find(item => item.id === 'et-nachos')!;
 
 interface HeroProps {
   onStartBooking: () => void;
@@ -25,32 +29,12 @@ export default function Hero({ onStartBooking, onExploreMenu, onOpenChat }: Hero
 
   useEffect(() => {
     // Dynamic opening hours calculation
+    // Nyitva/zárva a közös nyitvatartás (src/data.ts) és a budapesti idő alapján
     const checkOpenStatus = () => {
-      const now = new Date();
-      const hour = now.getHours();
-      const day = now.getDay(); // 0 is Sunday, 1 is Monday...
-
-      // Club 11 hours:
-      // Mon-Thu (1, 2, 3, 4): 14:00 - 23:00
-      // Fri-Sat (5, 6): 14:00 - 01:00 (of next day)
-      // Sun (0): 14:00 - 22:00
-      
-      let open = false;
-      if (day >= 1 && day <= 4) {
-        if (hour >= 14 && hour < 23) open = true;
-      } else if (day === 5 || day === 6) {
-        // Fri and Sat: open from 14:00 to 01:00 (which is 0:00 - 1:00 of next day, wait, let's keep it simple: 14:00 - 24:00, or if hour is 0 or 1 AM it belongs to Fri/Sat night)
-        if (hour >= 14 || hour < 1) open = true;
-      } else if (day === 0) {
-        if (hour >= 14 && hour < 22) open = true;
-      }
-
-      setIsOpen(open);
-      
-      // Formatting time in HH:MM
-      const min = now.getMinutes().toString().padStart(2, '0');
-      const hr = now.getHours().toString().padStart(2, '0');
-      setCurrentTime(`${hr}:${min}`);
+      const now = budapestNow();
+      const hours = OPENING_HOURS[now.day];
+      setIsOpen(!!hours && now.hour >= hours.open && now.hour < hours.close);
+      setCurrentTime(`${String(now.hour).padStart(2, '0')}:${String(now.minute).padStart(2, '0')}`);
     };
 
     checkOpenStatus();
@@ -150,7 +134,7 @@ export default function Hero({ onStartBooking, onExploreMenu, onOpenChat }: Hero
             <div className="flex items-center gap-6 justify-center lg:justify-start text-xs text-slate-400 font-mono pt-2">
               <span className="flex items-center gap-1.5">
                 <ShieldCheck className="w-4 h-4 text-emerald-500" />
-                Azonnali online visszaigazolás
+                Online asztalfoglalás
               </span>
               <span className="flex items-center gap-1.5">
                 <Navigation className="w-4 h-4 text-emerald-500" />
@@ -215,8 +199,8 @@ export default function Hero({ onStartBooking, onExploreMenu, onOpenChat }: Hero
                     <span className="text-emerald-400 font-bold">2 asztal</span>
                   </div>
                   <div className="flex justify-between items-center text-slate-300">
-                    <span className="text-slate-500">Legendás melegszendvics</span>
-                    <span className="text-emerald-400 font-bold">1290 Ft</span>
+                    <span className="text-slate-500">{FEATURED_SNACK.name}</span>
+                    <span className="text-emerald-400 font-bold">{FEATURED_SNACK.price.toLocaleString('hu-HU')} Ft</span>
                   </div>
                 </div>
 

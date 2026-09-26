@@ -3,90 +3,113 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { Table, MenuItem, Post } from './types';
+import { TableCategory, TableType, MenuItem, Post, DayHours } from './types';
 
-export const TABLES: Table[] = [
+// Játékterek: a vendég a típust foglalja, egy idősávban legfeljebb `count` foglalás lehet.
+export const TABLE_CATEGORIES: TableCategory[] = [
   {
-    id: 'pool-1',
-    name: 'Professzionális Pool Biliárd Asztal',
     type: 'pool',
-    description: 'Professzionális 9 lábas pool biliárd asztal kiváló posztóval és Simonis golyókészlettel.',
+    name: 'Pool Biliárd Asztal',
+    description: 'Professzionális 9 lábas pool biliárd asztal. Az asztalt érkezéskor a személyzet jelöli ki.',
     hourlyRate: 2300,
-    spots: 1,
+    count: 6,
   },
   {
-    id: 'pool-2',
-    name: 'Professzionális Pool Biliárd Asztal',
-    type: 'pool',
-    description: 'Professzionális 9 lábas pool biliárd asztal, ideális baráti társaságoknak vagy edzésekre.',
-    hourlyRate: 2300,
-    spots: 1,
-  },
-  {
-    id: 'pool-3',
-    name: 'Professzionális Pool Biliárd Asztal',
-    type: 'pool',
-    description: 'Precíz sávtartású 9 lábas pool asztal, tökéletes állapotban a klub közepén.',
-    hourlyRate: 2300,
-    spots: 1,
-  },
-  {
-    id: 'pool-4',
-    name: 'Professzionális Pool Biliárd Asztal',
-    type: 'pool',
-    description: 'Nyugodtabb sarokban elhelyezett pool asztal, ha elvonulva szeretnél játszani.',
-    hourlyRate: 2300,
-    spots: 1,
-  },
-  {
-    id: 'pool-5',
-    name: 'Professzionális Pool Biliárd Asztal',
-    type: 'pool',
-    description: 'Kiváló asztal baráti kihívásokhoz, a bárpult szomszédságában.',
-    hourlyRate: 2300,
-    spots: 1,
-  },
-  {
-    id: 'pool-6',
-    name: 'Professzionális Pool Biliárd Asztal',
-    type: 'pool',
-    description: 'Modern 9 lábas pool asztal prémium posztóval és kiváló kiegészítőkkel.',
-    hourlyRate: 2300,
-    spots: 1,
-  },
-  {
-    id: 'darts-1',
-    name: 'Soft Darts Pálya',
     type: 'darts',
-    description: 'Modern, biztonságos és pontos soft darts gép digitális számlálóval és játékvariációkkal.',
+    name: 'Soft Darts Gép',
+    description: 'Soft darts gép digitális számlálóval és játékvariációkkal.',
     hourlyRate: 2000,
-    spots: 2,
+    count: 2,
   },
   {
-    id: 'darts-2',
-    name: 'Soft Darts Pálya',
-    type: 'darts',
-    description: 'Második elektronikus soft darts pálya világító LED kijelzővel és kényelmes dobótávolsággal.',
-    hourlyRate: 2000,
-    spots: 2,
-  },
-  {
-    id: 'foosball-1',
-    name: 'Csocsó Asztal',
     type: 'foosball',
-    description: 'Robusztus, üveglapos, professzionális csocsó asztal a pörgős, izgalmas meccsekhez.',
-    hourlyRate: 1400,
-    spots: 1,
-  },
-  {
-    id: 'foosball-2',
     name: 'Csocsó Asztal',
-    type: 'foosball',
-    description: 'Második prémium csocsó asztalunk a családi és baráti bajnokságokhoz.',
+    description: 'Robusztus, professzionális csocsó asztal a pörgős meccsekhez.',
     hourlyRate: 1400,
-    spots: 1,
+    count: 2,
   },
 ];
+
+export const getTableCategory = (type: TableType) => TABLE_CATEGORIES.find(c => c.type === type)!;
+
+// Nyitvatartás a hét napjai szerint (index = Date.getDay(), 0 = vasárnap)
+export const OPENING_HOURS: DayHours[] = [
+  null,                    // Vasárnap
+  { open: 14, close: 22 }, // Hétfő
+  { open: 14, close: 22 }, // Kedd
+  { open: 14, close: 22 }, // Szerda
+  { open: 14, close: 23 }, // Csütörtök
+  { open: 14, close: 23 }, // Péntek
+  { open: 14, close: 22 }, // Szombat
+];
+
+export const DAY_NAMES = ['Vasárnap', 'Hétfő', 'Kedd', 'Szerda', 'Csütörtök', 'Péntek', 'Szombat'];
+
+// Hétfőtől vasárnapig, a megjelenítéshez
+export const WEEK_ORDER = [1, 2, 3, 4, 5, 6, 0];
+
+export const formatDayHours = (hours: DayHours) =>
+  hours ? `${String(hours.open).padStart(2, '0')}:00 - ${String(hours.close).padStart(2, '0')}:00` : 'Zárva';
+
+// Az aktuális budapesti dátum és idő, a látogató gépének időzónájától függetlenül
+export function budapestNow() {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Europe/Budapest',
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
+  }).formatToParts(new Date());
+  const get = (t: string) => parts.find(p => p.type === t)!.value;
+  const date = `${get('year')}-${get('month')}-${get('day')}`;
+  return { date, hour: Number(get('hour')), minute: Number(get('minute')), day: dayOfWeek(date) };
+}
+
+// YYYY-MM-DD dátum napja (0 = vasárnap)
+export function dayOfWeek(date: string) {
+  const [y, m, d] = date.split('-').map(Number);
+  return new Date(Date.UTC(y, m - 1, d)).getUTCDay();
+}
+
+export const slotStartHour = (slot: string) => Number(slot.slice(0, 2));
+
+// Az adott napon foglalható idősávok (zárt napon üres lista)
+export function getSlotsForDate(date: string): string[] {
+  const hours = OPENING_HOURS[dayOfWeek(date)];
+  if (!hours) return [];
+  return TIME_SLOTS.filter(slot => {
+    const start = slotStartHour(slot);
+    return start >= hours.open && start + 1 <= hours.close;
+  });
+}
+
+// Elkezdődött-e már az idősáv (budapesti idő szerint)
+export function isSlotInPast(date: string, slot: string, now = budapestNow()) {
+  if (date < now.date) return true;
+  return date === now.date && slotStartHour(slot) <= now.hour;
+}
+
+// Idősávok összefoglalása, pl. "14:00 - 17:00 (3 óra)"
+export function formatSlotsSummary(slots: string[]): string {
+  if (slots.length === 0) return '';
+  const sorted = [...slots].sort((a, b) => TIME_SLOTS.indexOf(a) - TIME_SLOTS.indexOf(b));
+  const blocks: string[] = [];
+  let currentStart = '';
+  let currentEnd = '';
+  sorted.forEach((slot) => {
+    const [start, end] = slot.split(' - ');
+    if (!currentStart) {
+      currentStart = start;
+      currentEnd = end;
+    } else if (currentEnd === start) {
+      currentEnd = end;
+    } else {
+      blocks.push(`${currentStart} - ${currentEnd}`);
+      currentStart = start;
+      currentEnd = end;
+    }
+  });
+  if (currentStart) blocks.push(`${currentStart} - ${currentEnd}`);
+  return `${blocks.join(', ')} (${slots.length} óra)`;
+}
 
 export const MENU_ITEMS: MenuItem[] = [
   // Ételek & Rágcsálnivalók (Étlap)
@@ -140,15 +163,6 @@ export const POSTS: Post[] = [
     category: 'drink',
   },
   {
-    id: 'post-3',
-    title: '🔴 Rex reneszánsz a 11. kerületben!',
-    content: 'Emlékeztek még a klasszikus rex játékra? A gombákra, a lyukakra, a zöld posztóra? 🕹️\n\nA Club 11-ben kiemelt figyelmet fordítunk a hagyományokra, így nálunk egy tökéletes állapotban lévő, felújított rex asztalon is játszhattok!\n\nTökéletes kikapcsolódás két generáció számára is – hozd el apukádat, nagypapádat, vagy mutasd meg a barátaidnak, mit tudsz a gomba körül!\n\nAsztaldíj mindössze 2000 Ft/óra.',
-    date: '2026-06-15',
-    likes: 56,
-    image: 'https://images.unsplash.com/photo-1511920170033-f8396924c348?q=80&w=1200',
-    category: 'general',
-  },
-  {
     id: 'post-4',
     title: '⚽ Eb- és VB meccsek közvetítése óriás kivetítőn!',
     content: 'Nálunk nem kell lemaradnod a legfontosabb sporteseményekről játék közben sem! 📺\n\nA Club 11 kávézó és bár részén hatalmas kivetítőn közvetítjük az összes izgalmas futballmeccset, Forma-1 futamot és kézilabda rangadót.\n\nSzurkoljunk együtt Újbudán! Kérj egy hideg csapolt sört, dőlj hátra a kényelmes foteleinkben, vagy játssz egy jó meccset a barátokkal két félidő között!',
@@ -159,6 +173,7 @@ export const POSTS: Post[] = [
   },
 ];
 
+// Minden lehetséges egyórás sáv; hogy egy adott napon melyik foglalható, azt a getSlotsForDate dönti el
 export const TIME_SLOTS = [
   '14:00 - 15:00',
   '15:00 - 16:00',
@@ -169,5 +184,4 @@ export const TIME_SLOTS = [
   '20:00 - 21:00',
   '21:00 - 22:00',
   '22:00 - 23:00',
-  '23:00 - 00:00',
 ];

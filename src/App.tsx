@@ -19,18 +19,16 @@ export default function App() {
   const [activeSection, setActiveSection] = useState<string>('home');
   const [isChatOpen, setIsChatOpen] = useState<boolean>(false);
 
-  // Quick navigation helpers
-  const handleStartBooking = () => {
-    setActiveSection('booking');
-    const el = document.getElementById('booking-section');
-    if (el) el.scrollIntoView({ behavior: 'smooth' });
+  // Oldalváltás: az új oldal tetejére ugrik (mobilon különösen fontos)
+  const navigate = (section: string) => {
+    setActiveSection(section);
+    window.scrollTo({ top: 0 });
   };
 
-  const handleExploreMenu = () => {
-    setActiveSection('menu');
-    const el = document.getElementById('menu-section');
-    if (el) el.scrollIntoView({ behavior: 'smooth' });
-  };
+  // Quick navigation helpers
+  const handleStartBooking = () => navigate('booking');
+
+  const handleExploreMenu = () => navigate('menu');
 
   const handleOpenChat = () => {
     setIsChatOpen(true);
@@ -42,7 +40,7 @@ export default function App() {
       {/* Top Navigation */}
       <Navbar 
         activeSection={activeSection} 
-        setActiveSection={setActiveSection} 
+        setActiveSection={navigate}
         isChatOpen={isChatOpen}
         setIsChatOpen={setIsChatOpen}
       />
@@ -74,7 +72,7 @@ export default function App() {
                 {/* Feature 1 */}
                 <div 
                   className="p-6 rounded-2xl bg-slate-900 border border-slate-800 hover:border-slate-700 transition-all cursor-pointer group"
-                  onClick={() => setActiveSection('booking')}
+                  onClick={() => navigate('booking')}
                   id="feature-card-biliard"
                 >
                   <div className="w-12 h-12 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
@@ -82,7 +80,7 @@ export default function App() {
                   </div>
                   <h3 className="text-lg font-bold text-white mb-2 group-hover:text-emerald-400 transition-colors">Professzionális Biliárd</h3>
                   <p className="text-xs text-slate-400 leading-relaxed">
-                    9 lábas professzionális pool biliárd asztalok várják a precíz lökések kedvelőit. Rex asztalunk pedig igazi nosztalgia!
+                    9 lábas professzionális pool biliárd asztalok várják a precíz lökések kedvelőit, mellettük soft darts gépek és csocsó asztalok.
                   </p>
                   <span className="inline-flex items-center gap-1.5 text-xs text-emerald-400 font-bold font-mono pt-4">
                     Asztalfoglalás indítása &rarr;
@@ -92,7 +90,7 @@ export default function App() {
                 {/* Feature 2 */}
                 <div 
                   className="p-6 rounded-2xl bg-slate-900 border border-slate-800 hover:border-slate-700 transition-all cursor-pointer group"
-                  onClick={() => setActiveSection('menu')}
+                  onClick={() => navigate('menu')}
                   id="feature-card-bar"
                 >
                   <div className="w-12 h-12 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
@@ -110,7 +108,7 @@ export default function App() {
                 {/* Feature 3 */}
                 <div 
                   className="p-6 rounded-2xl bg-slate-900 border border-slate-800 hover:border-slate-700 transition-all cursor-pointer group"
-                  onClick={() => setActiveSection('posts')}
+                  onClick={() => navigate('posts')}
                   id="feature-card-events"
                 >
                   <div className="w-12 h-12 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
@@ -179,22 +177,22 @@ export default function App() {
               <h4 className="font-bold text-sm text-white font-sans">Menüpontok</h4>
               <ul className="space-y-2 text-xs font-medium">
                 <li>
-                  <button onClick={() => setActiveSection('home')} className="hover:text-emerald-400 transition-colors">Főoldal</button>
+                  <button onClick={() => navigate('home')} className="hover:text-emerald-400 transition-colors">Főoldal</button>
                 </li>
                 <li>
-                  <button onClick={() => setActiveSection('booking')} className="hover:text-emerald-400 transition-colors">Interaktív Asztalfoglalás</button>
+                  <button onClick={() => navigate('booking')} className="hover:text-emerald-400 transition-colors">Interaktív Asztalfoglalás</button>
                 </li>
                 <li>
-                  <button onClick={() => setActiveSection('menu')} className="hover:text-emerald-400 transition-colors">Bár és Kávézó</button>
+                  <button onClick={() => navigate('menu')} className="hover:text-emerald-400 transition-colors">Bár és Kávézó</button>
                 </li>
                 <li>
-                  <button onClick={() => setActiveSection('gallery')} className="hover:text-emerald-400 transition-colors">Galéria</button>
+                  <button onClick={() => navigate('gallery')} className="hover:text-emerald-400 transition-colors">Galéria</button>
                 </li>
                 <li>
-                  <button onClick={() => setActiveSection('posts')} className="hover:text-emerald-400 transition-colors">Hírek és Facebook bejegyzések</button>
+                  <button onClick={() => navigate('posts')} className="hover:text-emerald-400 transition-colors">Hírek és Facebook bejegyzések</button>
                 </li>
                 <li>
-                  <button onClick={() => setActiveSection('about')} className="hover:text-emerald-400 transition-colors">Kapcsolat & Nyitvatartás</button>
+                  <button onClick={() => navigate('about')} className="hover:text-emerald-400 transition-colors">Kapcsolat & Nyitvatartás</button>
                 </li>
               </ul>
             </div>

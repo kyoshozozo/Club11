@@ -5,6 +5,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { MapPin, Phone, Mail, Clock, Send, CheckCircle2, Navigation, Compass } from 'lucide-react';
+import { OPENING_HOURS, DAY_NAMES, WEEK_ORDER, formatDayHours } from '../data';
 
 export default function About() {
   const [msgName, setMsgName] = useState('');
@@ -52,15 +53,10 @@ export default function About() {
     }, 5000);
   };
 
-  const schedule = [
-    { days: 'Hétfő', hours: 'Zárva' },
-    { days: 'Kedd', hours: '14:00 - 22:00' },
-    { days: 'Szerda', hours: '14:00 - 22:00' },
-    { days: 'Csütörtök', hours: '14:00 - 23:00' },
-    { days: 'Péntek', hours: '14:00 - 23:00' },
-    { days: 'Szombat', hours: '14:00 - 22:00' },
-    { days: 'Vasárnap', hours: 'Zárva' },
-  ];
+  const schedule = WEEK_ORDER.map(day => ({
+    days: DAY_NAMES[day],
+    hours: formatDayHours(OPENING_HOURS[day]),
+  }));
 
   return (
     <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-10 max-w-7xl mx-auto my-12 shadow-2xl space-y-12" id="about-section">
@@ -256,7 +252,7 @@ export default function About() {
             </p>
             <div className="pt-2">
               <a 
-                href="https://maps.google.com/?q=Hauszmann+Aladar+utca+5+Gabanyi+Laszlo+sportcsarnok+Budapest"
+                href="https://www.google.com/maps/search/?api=1&query=Budapest+Hauszmann+Alajos+utca+5+Gab%C3%A1nyi+L%C3%A1szl%C3%B3+Sportcsarnok"
                 target="_blank"
                 rel="noopener noreferrer"
                 id="maps-direction-link"
