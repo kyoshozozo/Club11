@@ -42,16 +42,6 @@ export interface MenuItem {
   isPopular?: boolean;
 }
 
-export interface Post {
-  id: string;
-  title: string;
-  content: string;
-  date: string;
-  likes: number;
-  image?: string;
-  category: 'event' | 'tournament' | 'drink' | 'general';
-}
-
 export interface Message {
   id: string;
   role: 'user' | 'model';

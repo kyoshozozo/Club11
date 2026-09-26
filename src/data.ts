@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { TableCategory, TableType, MenuItem, Post, DayHours } from './types';
+import { TableCategory, TableType, MenuItem, DayHours } from './types';
 
 // Játékterek: a vendég a típust foglalja, egy idősávban legfeljebb `count` foglalás lehet.
 export const TABLE_CATEGORIES: TableCategory[] = [
@@ -143,35 +143,10 @@ export const MENU_ITEMS: MenuItem[] = [
   { id: 'it-tea-mezzel', name: 'Tea mézzel', category: 'itallap', price: 750, description: 'Melegítő, zamatos tea minőségi mézzel ízesítve.' },
 ];
 
-export const POSTS: Post[] = [
-  {
-    id: 'post-1',
-    title: '🏆 Pool Biliárd Házibajnokság a Club 11-ben!',
-    content: 'Figyelem, biliárd rajongók! 🎯 Közkívánatra újra megrendezzük a Club 11 pool házibajnokságot! \n\nIdőpont: Következő péntek, 18:00 órától.\nKategória: Amatőr 9-es pool biliárd.\nNevezési díj: NINCS, de a helyek száma korlátozott (max. 16 fő).\nDíjazás: Az első három helyezett kupa, érem és értékes italkupon elismerésben részesül!\n\nNevezni személyesen a pultnál, itt az oldalon a csevegőben, vagy a Facebook üzenetben tudtok. Várunk titeket a megszokott jó hangulattal és zenével!',
-    date: '2026-06-25',
-    likes: 42,
-    image: 'https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?q=80&w=1200',
-    category: 'tournament',
-  },
-  {
-    id: 'post-2',
-    title: '🍺 Új kézműves sörök a csapon és a hűtőben!',
-    content: 'Egy jó játék mellé jár egy kiváló ital is! 🍻 Bővítettük a sörkínálatunkat a legfinomabb hazai kisüzemi sörökkel. \n\nMár csapon is elérhető a közkedvelt hidegkomlós IPA-nk, a hűtőnkbe pedig prémium gyümölcsös és búzasörök költöztek. \n\nHozd el a barátokat egy meccsre, és kóstoljátok meg az újdonságokat! Foglalj asztalt az online foglalónkon keresztül még ma!',
-    date: '2026-06-20',
-    likes: 29,
-    image: 'https://images.unsplash.com/photo-1507133750040-4a8f57021571?q=80&w=1200',
-    category: 'drink',
-  },
-  {
-    id: 'post-4',
-    title: '⚽ Eb- és VB meccsek közvetítése óriás kivetítőn!',
-    content: 'Nálunk nem kell lemaradnod a legfontosabb sporteseményekről játék közben sem! 📺\n\nA Club 11 kávézó és bár részén hatalmas kivetítőn közvetítjük az összes izgalmas futballmeccset, Forma-1 futamot és kézilabda rangadót.\n\nSzurkoljunk együtt Újbudán! Kérj egy hideg csapolt sört, dőlj hátra a kényelmes foteleinkben, vagy játssz egy jó meccset a barátokkal két félidő között!',
-    date: '2026-06-10',
-    likes: 38,
-    image: 'https://images.unsplash.com/photo-1470337458703-46ad1756a187?q=80&w=1200',
-    category: 'event',
-  },
-];
+// AI csapos: egy beszélgetésben legfeljebb ennyi kérdésre válaszol, utána telefonra irányít
+export const MAX_CHAT_QUESTIONS = 12;
+export const CHAT_LIMIT_MESSAGE =
+  'Köszönöm a sok kérdést! 😊 A további kérdéseiddel kérlek, inkább telefonon érdeklődj: +36 70 621 4181 – ott a kollégáim mindenben szívesen segítenek!';
 
 // Minden lehetséges egyórás sáv; hogy egy adott napon melyik foglalható, azt a getSlotsForDate dönti el
 export const TIME_SLOTS = [

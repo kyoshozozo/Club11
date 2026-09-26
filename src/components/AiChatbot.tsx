@@ -5,7 +5,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { MessageSquare, X, Send, User, Sparkles, Coffee } from 'lucide-react';
-import { OPENING_HOURS, DAY_NAMES, WEEK_ORDER, formatDayHours } from '../data';
+import { OPENING_HOURS, DAY_NAMES, WEEK_ORDER, formatDayHours, MAX_CHAT_QUESTIONS, CHAT_LIMIT_MESSAGE } from '../data';
 
 interface AiChatbotProps {
   isOpen: boolean;
@@ -33,8 +33,12 @@ export default function AiChatbot({ isOpen, setIsOpen, onNavigateToBooking }: Ai
     }
   }, [messages]);
 
+  // A 12. kérdés megválaszolása után a csapos telefonra irányít, és nem fogad több kérdést
+  const questionCount = messages.filter(m => m.role === 'user').length;
+  const limitReached = questionCount >= MAX_CHAT_QUESTIONS;
+
   const handleSendMessage = async (textToSend: string) => {
-    if (!textToSend.trim() || isLoading) return;
+    if (!textToSend.trim() || isLoading || limitReached) return;
 
     const userMsg = {
       id: `msg-${Date.now()}`,
@@ -47,6 +51,15 @@ export default function AiChatbot({ isOpen, setIsOpen, onNavigateToBooking }: Ai
     setMessages(updatedMessages);
     setInputText('');
     setIsLoading(true);
+
+    // Ez volt az utolsó megengedett kérdés: a válasz után jön a telefonos üzenet
+    const isLastQuestion = updatedMessages.filter(m => m.role === 'user').length >= MAX_CHAT_QUESTIONS;
+    const limitMsg = () => ({
+      id: `msg-${Date.now() + 2}`,
+      role: 'model',
+      text: CHAT_LIMIT_MESSAGE,
+      timestamp: new Date().toLocaleTimeString('hu-HU', { hour: '2-digit', minute: '2-digit' })
+    });
 
     try {
       // Fetch response from server-side /api/chat
@@ -65,7 +78,7 @@ export default function AiChatbot({ isOpen, setIsOpen, onNavigateToBooking }: Ai
         timestamp: new Date().toLocaleTimeString('hu-HU', { hour: '2-digit', minute: '2-digit' })
       };
 
-      setMessages(prev => [...prev, modelMsg]);
+      setMessages(prev => (isLastQuestion && !data.limitReached) ? [...prev, modelMsg, limitMsg()] : [...prev, modelMsg]);
 
     } catch (err) {
       console.error('Error fetching chatbot reply:', err);
@@ -75,7 +88,7 @@ export default function AiChatbot({ isOpen, setIsOpen, onNavigateToBooking }: Ai
         text: `Szia! Jelenleg hálózati hiba lépett fel. Nyitvatartásunk: ${WEEK_ORDER.map(day => `${DAY_NAMES[day]}: ${formatDayHours(OPENING_HOURS[day])}`).join(', ')}. Hívj minket telefonon: +36 70 621 4181!`,
         timestamp: new Date().toLocaleTimeString('hu-HU', { hour: '2-digit', minute: '2-digit' })
       };
-      setMessages(prev => [...prev, errorMsg]);
+      setMessages(prev => isLastQuestion ? [...prev, errorMsg, limitMsg()] : [...prev, errorMsg]);
     } finally {
       setIsLoading(false);
     }
@@ -203,16 +216,16 @@ export default function AiChatbot({ isOpen, setIsOpen, onNavigateToBooking }: Ai
           <input
             type="text"
             id="chat-input-field"
-            placeholder="Kérdezz valamit a Club 11-ről..."
+            placeholder={limitReached ? 'További kérdésekkel hívj minket: +36 70 621 4181' : 'Kérdezz valamit a Club 11-ről...'}
             value={inputText}
             onChange={(e) => setInputText(e.target.value)}
-            disabled={isLoading}
+            disabled={isLoading || limitReached}
             className="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500 placeholder:text-slate-600"
           />
           <button
             type="submit"
             id="chat-submit-btn"
-            disabled={!inputText.trim() || isLoading}
+            disabled={!inputText.trim() || isLoading || limitReached}
             className="p-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 text-slate-950 font-black transition-all hover:opacity-95 active:scale-95 disabled:opacity-40 disabled:scale-100"
           >
             <Send className="w-4 h-4" />

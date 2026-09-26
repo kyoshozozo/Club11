@@ -17,41 +17,33 @@ interface HeroProps {
   onOpenChat: () => void;
 }
 
-export default function Hero({ onStartBooking, onExploreMenu, onOpenChat }: HeroProps) {
-  const [isOpen, setIsOpen] = useState(false);
-  const [currentTime, setCurrentTime] = useState('');
-  const [imageSrc, setImageSrc] = useState('https://images.unsplash.com/photo-1544192240-4a34fed0104c?q=80&w=1200&auto=format&fit=crop');
-  const [useSvgFallback, setUseSvgFallback] = useState(false);
-
-  const handleImageError = () => {
-    setUseSvgFallback(true);
+// Nyitva/zárva a közös nyitvatartás (src/data.ts) és a budapesti idő alapján
+function getOpenStatus() {
+  const now = budapestNow();
+  const hours = OPENING_HOURS[now.day];
+  return {
+    isOpen: !!hours && now.hour >= hours.open && now.hour < hours.close,
+    time: `${String(now.hour).padStart(2, '0')}:${String(now.minute).padStart(2, '0')}`,
   };
+}
+
+export default function Hero({ onStartBooking, onExploreMenu, onOpenChat }: HeroProps) {
+  // Már az első megjelenéskor a helyes állapot látszik (nincs üres idő / téves "ZÁRVA" villanás)
+  const [status, setStatus] = useState(getOpenStatus);
+  const { isOpen, time: currentTime } = status;
 
   useEffect(() => {
-    // Dynamic opening hours calculation
-    // Nyitva/zárva a közös nyitvatartás (src/data.ts) és a budapesti idő alapján
-    const checkOpenStatus = () => {
-      const now = budapestNow();
-      const hours = OPENING_HOURS[now.day];
-      setIsOpen(!!hours && now.hour >= hours.open && now.hour < hours.close);
-      setCurrentTime(`${String(now.hour).padStart(2, '0')}:${String(now.minute).padStart(2, '0')}`);
-    };
-
-    checkOpenStatus();
-    const interval = setInterval(checkOpenStatus, 60000);
+    const interval = setInterval(() => setStatus(getOpenStatus()), 30000);
     return () => clearInterval(interval);
   }, []);
 
   return (
     <div className="relative bg-slate-950 overflow-hidden py-16 lg:py-24" id="home-section">
       {/* Background Image Overlay with deep slate tint */}
-      <div className="absolute inset-0 z-0 opacity-30">
-        <img 
-          src="https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?q=80&w=1920" 
-          alt="Billiard background" 
-          className="w-full h-full object-cover filter blur-[2px]"
-          referrerPolicy="no-referrer"
-        />
+      <div className="absolute inset-0 z-0 opacity-30" aria-hidden="true">
+        <div className="w-full h-full filter blur-[2px] [&>svg]:w-full [&>svg]:h-full">
+          <BilliardHallIllustration slice />
+        </div>
         <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/80 to-transparent"></div>
       </div>
 
@@ -149,19 +141,9 @@ export default function Hero({ onStartBooking, onExploreMenu, onOpenChat }: Hero
               
               {/* Card visual header */}
               <div className="relative h-48 bg-slate-950 overflow-hidden">
-                {!useSvgFallback ? (
-                  <img 
-                    src={imageSrc} 
-                    alt="Biliárd asztalok" 
-                    className="w-full h-full object-cover opacity-65 transition-opacity duration-300"
-                    referrerPolicy="no-referrer"
-                    onError={handleImageError}
-                  />
-                ) : (
-                  <div className="w-full h-full opacity-75">
-                    <BilliardHallIllustration />
-                  </div>
-                )}
+                <div className="w-full h-full opacity-75" role="img" aria-label="Biliárd asztalok illusztráció">
+                  <BilliardHallIllustration slice />
+                </div>
                 <div className="absolute inset-0 bg-gradient-to-t from-slate-900 to-transparent"></div>
                 
                 {/* Float tag */}
@@ -222,9 +204,14 @@ export default function Hero({ onStartBooking, onExploreMenu, onOpenChat }: Hero
   );
 }
 
-function BilliardHallIllustration() {
+function BilliardHallIllustration({ slice = false }: { slice?: boolean }) {
   return (
-    <svg viewBox="0 0 400 200" className="w-full h-full object-cover" xmlns="http://www.w3.org/2000/svg">
+    <svg
+      viewBox="0 0 400 200"
+      className="w-full h-full"
+      preserveAspectRatio={slice ? 'xMidYMid slice' : 'xMidYMid meet'}
+      xmlns="http://www.w3.org/2000/svg"
+    >
       {/* Background Room Gradient */}
       <defs>
         <radialGradient id="roomBg" cx="50%" cy="30%" r="85%">
