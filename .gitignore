@@ -6,3 +6,5 @@ coverage/
 *.log
 .env*
 !.env.example
+# vendégek foglalási adatai (személyes adatok) – nem kerülhetnek a GitHubra
+data/bookings.json
