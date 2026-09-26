@@ -37,10 +37,24 @@ export default function Gallery() {
   // Load images and admin state
   useEffect(() => {
     fetchImages();
+    // A tárolt tokent a szerverrel ellenőriztetjük (lejárhatott vagy újraindult a szerver)
     const token = localStorage.getItem('club11_admin_token');
-    if (token === 'admin-session-club11-token') {
-      setIsAdmin(true);
-      setAdminToken(token);
+    if (token) {
+      fetch('/api/gallery/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token })
+      })
+        .then(res => res.json())
+        .then(data => {
+          if (data.valid) {
+            setIsAdmin(true);
+            setAdminToken(token);
+          } else {
+            localStorage.removeItem('club11_admin_token');
+          }
+        })
+        .catch(() => localStorage.removeItem('club11_admin_token'));
     }
   }, []);
 
@@ -102,6 +116,13 @@ export default function Gallery() {
   };
 
   const handleLogout = () => {
+    if (adminToken) {
+      fetch('/api/gallery/logout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: adminToken })
+      }).catch(() => {});
+    }
     localStorage.removeItem('club11_admin_token');
     setAdminToken(null);
     setIsAdmin(false);

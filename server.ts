@@ -5,7 +5,6 @@
 
 import express from "express";
 import path from "path";
-import { fileURLToPath } from "url";
 import { GoogleGenAI } from "@google/genai";
 import dotenv from "dotenv";
 import fs from "fs";
@@ -13,13 +12,9 @@ import fs from "fs";
 // Load environment variables
 dotenv.config();
 
-// ES Module support for __dirname
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
 async function startServer() {
   const app = express();
-  const PORT = 3000;
+  const PORT = Number(process.env.PORT) || 3000;
 
   // Create uploads and data directories if they do not exist
   const uploadsDir = path.join(process.cwd(), "uploads");
@@ -165,6 +160,14 @@ async function startServer() {
     }
   });
 
+  // Admin authentication sessions
+  const activeAdminTokens = new Set<string>();
+
+  function isValidAdminToken(token?: string): boolean {
+    if (!token) return false;
+    return activeAdminTokens.has(token);
+  }
+
   // Gallery Endpoints
   app.get("/api/gallery", (req, res) => {
     try {
@@ -181,19 +184,46 @@ async function startServer() {
 
   app.post("/api/gallery/login", (req, res) => {
     const { password } = req.body;
-    // Set a very simple password
-    if (password === "club11admin") {
-      res.json({ success: true, token: "admin-session-club11-token" });
+    const configuredPassword = process.env.ADMIN_PASSWORD?.trim();
+
+    if (!configuredPassword) {
+      return res.status(403).json({ 
+        success: false, 
+        error: "Az adminisztrátori belépés jelenleg le van tiltva, mert nincs beállítva az ADMIN_PASSWORD környezeti változó!" 
+      });
+    }
+
+    if (password === configuredPassword) {
+      const token = "club11_adm_" + Math.random().toString(36).substring(2) + Date.now().toString(36);
+      activeAdminTokens.add(token);
+      res.json({ success: true, token });
     } else {
       res.status(401).json({ success: false, error: "Hibás jelszó!" });
     }
+  });
+
+  app.post("/api/gallery/verify", (req, res) => {
+    const { token } = req.body;
+    if (token && isValidAdminToken(token)) {
+      res.json({ valid: true });
+    } else {
+      res.json({ valid: false });
+    }
+  });
+
+  app.post("/api/gallery/logout", (req, res) => {
+    const { token } = req.body;
+    if (token) {
+      activeAdminTokens.delete(token);
+    }
+    res.json({ success: true });
   });
 
   app.post("/api/gallery/upload", (req, res) => {
     try {
       const { title, description, image, token } = req.body;
 
-      if (token !== "admin-session-club11-token") {
+      if (!isValidAdminToken(token)) {
         return res.status(403).json({ error: "Nincs jogosultságod a kép feltöltéséhez!" });
       }
 
@@ -251,7 +281,7 @@ async function startServer() {
       const { id } = req.params;
       const { token } = req.body;
 
-      if (token !== "admin-session-club11-token") {
+      if (!isValidAdminToken(token)) {
         return res.status(403).json({ error: "Nincs jogosultságod a kép törléséhez!" });
       }
 
@@ -344,7 +374,8 @@ async function startServer() {
   });
 
   // Vite development or production routing
-  if (process.env.NODE_ENV !== "production") {
+  const isDev = process.env.NODE_ENV !== "production" && (process.argv[1]?.includes("server.ts") ?? false);
+  if (isDev) {
     const { createServer: createViteServer } = await import("vite");
     const vite = await createViteServer({
       server: { middlewareMode: true },
