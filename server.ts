@@ -5,7 +5,7 @@
 
 import express from "express";
 import path from "path";
-import { GoogleGenAI } from "@google/genai";
+import Anthropic from "@anthropic-ai/sdk";
 import dotenv from "dotenv";
 import fs from "fs";
 import crypto from "crypto";
@@ -19,6 +19,11 @@ import {
   getSlotsForDate,
   isSlotInPast,
   formatSlotsSummary,
+  budapestNow,
+  dayOfWeek,
+  slotStartHour,
+  MAX_CHAT_QUESTIONS,
+  CHAT_LIMIT_MESSAGE,
 } from "./src/data";
 import type { Booking, TableType } from "./src/types";
 
@@ -45,6 +50,29 @@ async function startServer() {
     fs.writeFileSync(bookingsFilePath, JSON.stringify([]), "utf-8");
   }
 
+  const readBookings = (): Booking[] => JSON.parse(fs.readFileSync(bookingsFilePath, "utf-8"));
+  const writeBookings = (bookings: Booking[]) =>
+    fs.writeFileSync(bookingsFilePath, JSON.stringify(bookings, null, 2), "utf-8");
+
+  const countBooked = (bookings: Booking[], type: TableType, date: string, slot: string) =>
+    bookings.filter((b) => b.type === type && b.date === date && b.timeSlots.includes(slot)).length;
+
+  // Szabad helyek száma idősávonként és típusonként egy adott napra
+  // (elmúlt/elkezdődött idősávnál 0). A foglaló és az AI csapos is ezt használja.
+  function computeAvailability(date: string, bookings = readBookings()) {
+    const slots = getSlotsForDate(date);
+    const availability: Record<string, Record<string, number>> = {};
+    for (const category of TABLE_CATEGORIES) {
+      availability[category.type] = {};
+      for (const slot of slots) {
+        availability[category.type][slot] = isSlotInPast(date, slot)
+          ? 0
+          : Math.max(0, category.count - countBooked(bookings, category.type, date, slot));
+      }
+    }
+    return { slots, availability };
+  }
+
   // Body parser with larger payload limit for base64 image uploads
   app.use(express.json({ limit: "25mb" }));
   app.use(express.urlencoded({ limit: "25mb", extended: true }));
@@ -52,23 +80,19 @@ async function startServer() {
   // Serve uploaded images statically
   app.use("/uploads", express.static(uploadsDir));
 
-  // Lazy-initialize Gemini API to prevent crash on startup if missing key
-  let aiClient: GoogleGenAI | null = null;
-  function getGeminiClient() {
+  // Az AI csapos a Claude Haiku 4.5 modellel válaszol (Anthropic API).
+  // A kulcs az ANTHROPIC_API_KEY környezeti változóból jön; ha nincs megadva,
+  // a csapos a beépített tartalék válaszokkal működik.
+  const CHAT_MODEL = "claude-haiku-4-5";
+  let aiClient: Anthropic | null = null;
+  function getClaudeClient() {
     if (!aiClient) {
-      const apiKey = process.env.GEMINI_API_KEY;
+      const apiKey = process.env.ANTHROPIC_API_KEY;
       if (!apiKey) {
-        console.warn("GEMINI_API_KEY is not defined. AI Chatbot features will run in offline demo mode.");
+        console.warn("ANTHROPIC_API_KEY is not defined. AI Chatbot features will run in offline demo mode.");
         return null;
       }
-      aiClient = new GoogleGenAI({
-        apiKey: apiKey,
-        httpOptions: {
-          headers: {
-            'User-Agent': 'aistudio-build',
-          }
-        }
-      });
+      aiClient = new Anthropic({ apiKey, timeout: 30_000, maxRetries: 1 });
     }
     return aiClient;
   }
@@ -110,7 +134,8 @@ ${menuText("itallap")}
 
     A VISELKEDÉSEDRE VONATKOZÓ SZABÁLYOK:
     1. Mindig magyarul válaszolj, kedves, laza, közvetlen, tegeződő hangnemben (mint egy igazi csapos a törzsvendégeivel).
-    2. Ha valaki asztalt szeretne foglalni, hívd fel a figyelmét, hogy a weboldalon elérhető az "Asztalfoglalás" menüpont, ahol kiválaszthatja a játék típusát (pool biliárd, darts vagy csocsó), a napot és akár több idősávot is. A konkrét asztalt a személyzet jelöli ki. A foglalás akkor érvényes, ha visszaigazolást kap róla. Hívhatja a fenti telefonszámot is.
+    2. SZABAD ASZTAL ÉS FOGLALÁS: Ha valaki azt kérdezi, van-e szabad asztal/gép egy időpontra, a lenti "SZABAD HELYEK" adatok alapján válaszolj egyértelműen igennel vagy nemmel, és ha nincs, ajánld fel a legközelebbi szabad idősávokat. Ha a kért időpont nyitvatartáson kívül esik (pl. zárás után vagy vasárnap), mondd meg, hogy akkor zárva vagyunk. Te magad nem tudsz foglalni: foglalni a weboldal "Asztalfoglalás" menüpontjában lehet (játék típusa, nap, egy vagy több idősáv; a konkrét asztalt a személyzet jelöli ki), vagy telefonon. A foglalás akkor érvényes, ha visszaigazolást kap róla. Soha ne állítsd, hogy lefoglaltál valamit.
+    2/b. IDŐ: A "ma", "holnap", "ma este" stb. kifejezéseket a lenti AKTUÁLIS IDŐ alapján értelmezd. Mivel 14:00-tól vagyunk nyitva, a 12 alatti órák délutánt/estét jelentenek (pl. "tizenegy óra" = 23:00, "8-ra" = 20:00). Kérdezz vissza, ha nem egyértelmű, melyik napra vagy játékra gondol a vendég.
     3. ÁRAK: KIZÁRÓLAG a fenti árlistában és óradíjakban szereplő árakat mondhatod, pontosan úgy, ahogy ott szerepelnek. Soha ne találj ki árat, ne becsülj, ne kerekíts és ne mondj akciót vagy kedvezményt. Ha valaminek nincs ára a listában, vagy nincs a listában, mondd, hogy erről a pultnál vagy telefonon tudnak felvilágosítást adni. Ha étel, ital vagy rágcsálnivaló jön szóba általánosságban, ne sorold fel a teljes kínálatot, hanem javasold, hogy "nézd meg étlapunkat" a weboldalon.
     4. Melegszendvicset magadtól SOHA ne ajánlj. Csak akkor beszélj róla, ha a vendég kifejezetten rákérdez, és akkor is csak az árlistában szereplő árat mondd. Soproni sört nem forgalmazunk, azt ne ajánld.
     5. Ha nem tudsz valamit biztosan, válaszolj röviden és udvariasan, és irányítsd a vendéget a megadott telefonszámra, e-mail címre vagy a Facebook oldalra.
@@ -118,26 +143,168 @@ ${menuText("itallap")}
     7. FONTOS: VÁLASZOLJ PICIT RÖVIDEBBEN ÉS TÖMÖREBBEN! Kerüld a hosszú monológot és a felesleges magyarázkodást. Lényegretörő, közvetlen, barátságos, rövid válaszokat adj (lehetőleg maximum 2-3 rövid bekezdés).
   `;
 
-  // Helper to generate offline/fallback replies
-  function getOfflineReply(messages: any[]) {
-    const lastUserMessage = messages[messages.length - 1]?.text || "";
-    let mockReply = "Szia! Sára vagyok, a Club 11 Virtuális Csaposa és szalonvezetője! 👋 Újbudán várunk a Hauszmann Alajos u. 5. alatt. Biliárddal, csocsóval, darts-szal, jéghideg italokkal és snackekkel várunk. Foglalj asztalt az oldalon fenti foglalóval!";
-    
-    const lower = lastUserMessage.toLowerCase();
-    if (lower.includes("ár") || lower.includes("mennyibe")) {
-      const rates = TABLE_CATEGORIES.map((c) => `${c.name.toLowerCase()} ${formatPrice(c.hourlyRate)}/óra`).join(", ");
-      mockReply = `Óradíjaink: ${rates}. Italainkhoz és snackjeinkhez nézd meg étlapunkat a weboldalon!`;
-    } else if (lower.includes("nyitva") || lower.includes("mikor")) {
-      const hours = WEEK_ORDER.map((day) => `${DAY_NAMES[day]}: ${formatDayHours(OPENING_HOURS[day])}`).join(", ");
-      mockReply = `${hours}. Beugrasz ma?`;
-    } else if (lower.includes("kaja") || lower.includes("eszik") || lower.includes("szendvics") || lower.includes("étel") || lower.includes("nachos")) {
-      mockReply = "Nézd meg étlapunkat a weboldalon a teljes étel- és snack kínálatunkért!";
-    } else if (lower.includes("cím") || lower.includes("hol") || lower.includes("hely") || lower.includes("hova")) {
-      mockReply = "Újbudán, a Hauszmann Alajos u. 5. szám alatt vagyunk a Gabányi László Sportcsarnokon belül. Gyere be a főbejáraton, ott megtalálsz!";
-    } else if (lower.includes("foglal") || lower.includes("biliárd")) {
-      mockReply = "Foglalj az oldalon található Asztalfoglalás menüpontban, ahol akár több idősávot is kijelölhetsz egyszerre, vagy hívj fel minket: +36 70 621 4181!";
+  // ------------------------------------------------------------------
+  // Dátum/idő és foglaltság a csapos számára
+  // ------------------------------------------------------------------
+  const addDays = (date: string, days: number) => {
+    const [y, m, d] = date.split("-").map(Number);
+    return new Date(Date.UTC(y, m - 1, d + days)).toISOString().slice(0, 10);
+  };
+  const pad2 = (n: number) => String(n).padStart(2, "0");
+  const categoryName = (type: TableType) => TABLE_CATEGORIES.find((c) => c.type === type)!.name.toLowerCase();
+
+  const describeDay = (date: string, today: string) => {
+    const dayName = DAY_NAMES[dayOfWeek(date)].toLowerCase();
+    if (date === today) return `Ma (${dayName})`;
+    if (date === addDays(today, 1)) return `Holnap (${dayName})`;
+    return `${date} (${dayName})`;
+  };
+
+  // Az adott napon még szabad idősávok egy típusból, pl. "20:00 - 21:00 (6 szabad), ..."
+  const freeSlotsText = (date: string, type: TableType, availability: Record<string, Record<string, number>>) =>
+    Object.entries(availability[type] || {})
+      .filter(([, free]) => free > 0)
+      .map(([slot, free]) => `${slot} (${free} szabad)`)
+      .join(", ");
+
+  // Élő adatok az AI csapos számára: pontos idő és a következő 7 nap szabad helyei
+  function buildLiveContext() {
+    const now = budapestNow();
+    const hoursToday = OPENING_HOURS[now.day];
+    const openNow = !!hoursToday && now.hour >= hoursToday.open && now.hour < hoursToday.close;
+    const bookings = readBookings();
+    const lines = [
+      `AKTUÁLIS IDŐ (Budapest): ${now.date}, ${DAY_NAMES[now.day].toLowerCase()}, ${pad2(now.hour)}:${pad2(now.minute)}. Most ${openNow ? "NYITVA" : "ZÁRVA"} vagyunk.`,
+      `SZABAD HELYEK a következő 7 napra (csak a még foglalható idősávok, zárójelben a szabad asztalok/gépek száma):`,
+    ];
+    for (let i = 0; i < 7; i++) {
+      const date = addDays(now.date, i);
+      const label = `${date} (${DAY_NAMES[dayOfWeek(date)].toLowerCase()})`;
+      const { slots, availability } = computeAvailability(date, bookings);
+      if (slots.length === 0) {
+        lines.push(`- ${label}: ZÁRVA, nem lehet foglalni.`);
+        continue;
+      }
+      lines.push(`- ${label}, nyitva ${formatDayHours(OPENING_HOURS[dayOfWeek(date)])}:`);
+      for (const category of TABLE_CATEGORIES) {
+        const free = freeSlotsText(date, category.type, availability);
+        lines.push(`    ${category.name}: ${free || "erre a napra már nincs szabad idősáv"}`);
+      }
     }
-    return mockReply;
+    return lines.join("\n");
+  }
+
+  // Egyszerű magyar szövegértelmezés a tartalék (AI nélküli) válaszokhoz
+  const HU_NUMBERS: [string, number][] = [
+    ["tizenkettő", 12], ["tizenkét", 12], ["tizenegy", 11], ["kettő", 2], ["három", 3], ["négy", 4],
+    ["nyolc", 8], ["kilenc", 9], ["tíz", 10], ["két", 2], ["hat", 6], ["hét", 7], ["öt", 5], ["egy", 1],
+  ];
+  const TIME_SUFFIXES = ["", "kor", "órakor", "órára", "óra", "ra", "re", "ig", "tól", "től", "óráig"];
+  const WEEKDAY_STEMS = ["vasárn", "hétf", "kedd", "szerd", "csütört", "pént", "szomb"];
+
+  function parseQuestion(text: string, today: string) {
+    const lower = text.toLowerCase();
+    const words = lower.split(/[^0-9a-záéíóöőúüű]+/).filter(Boolean);
+
+    // Nap: ma / holnap / holnapután / hét napjai (a legközelebbi ilyen nap)
+    let date = today;
+    if (words.some((w) => w.startsWith("holnapután"))) date = addDays(today, 2);
+    else if (words.some((w) => w.startsWith("holnap"))) date = addDays(today, 1);
+    else {
+      const idx = WEEKDAY_STEMS.findIndex((stem) => words.some((w) => w.startsWith(stem)));
+      if (idx >= 0) date = addDays(today, (idx - dayOfWeek(today) + 7) % 7);
+    }
+
+    // Óra: "18:00", "18 órára", "11-re", "este tizenegyre", "hétkor" ...
+    let hour: number | null = null;
+    const clock = lower.match(/\b(\d{1,2})[:.]\d{2}\b/);
+    if (clock) hour = Number(clock[1]);
+    for (let i = 0; hour === null && i < words.length; i++) {
+      const w = words[i];
+      const next = words[i + 1] || "";
+      const prev = words[i - 1] || "";
+      // "este 8", "8 órára", "8-ra" -> időpont; "egy asztal", "ma 4 fő" -> nem
+      const timeContext = next.startsWith("ór") || ["kor", "ra", "re", "ig", "tól", "től"].includes(next) ||
+        ["este", "délután", "reggel"].includes(prev);
+      if (/^\d{1,2}$/.test(w) && Number(w) <= 23 && (timeContext || ["ma", "holnap"].includes(prev) && next !== "fő" && !next.startsWith("fő"))) {
+        hour = Number(w);
+        break;
+      }
+      for (const [word, value] of HU_NUMBERS) {
+        if (w.startsWith(word) && TIME_SUFFIXES.includes(w.slice(word.length)) && (w !== word || timeContext)) {
+          hour = value;
+          break;
+        }
+      }
+    }
+    // 14 és 23 óra között vagyunk nyitva, ezért a 12 alatti órák délutánt/estét jelentenek
+    if (hour !== null && hour < 12) hour += 12;
+
+    let type: TableType | null = null;
+    if (words.some((w) => w.startsWith("darts"))) type = "darts";
+    else if (words.some((w) => w.startsWith("csocs"))) type = "foosball";
+    else if (words.some((w) => w.startsWith("biliárd") || w.startsWith("pool"))) type = "pool";
+
+    const has = (...stems: string[]) => words.some((w) => stems.some((s) => w.startsWith(s)));
+    return { words, date, hour, type, has };
+  }
+
+  function availabilityReply(date: string, hour: number | null, type: TableType, today: string) {
+    const label = describeDay(date, today);
+    const dayHours = OPENING_HOURS[dayOfWeek(date)];
+    if (!dayHours) {
+      return `${label} zárva vagyunk, akkor sajnos nem tudunk asztalt adni. Hétfőtől szombatig várunk 14:00-tól, a pontos nyitvatartást a Kapcsolat oldalon találod!`;
+    }
+    const { slots, availability } = computeAvailability(date);
+    const name = categoryName(type);
+    const free = freeSlotsText(date, type, availability);
+    const freeText = free ? `Még szabad ${name}: ${free}.` : `Erre a napra már nincs szabad ${name}.`;
+    const bookHint = "Foglalni az Asztalfoglalás menüpontban tudsz, vagy hívj minket: +36 70 621 4181. A foglalás akkor érvényes, ha visszaigazoljuk.";
+    const withHint = (text: string) => (free ? `${text} ${bookHint}` : text);
+
+    if (hour === null) {
+      return withHint(free ? `${label} még szabad ${name}: ${free}.` : `${label} már nincs szabad ${name}.`);
+    }
+    const slot = slots.find((s) => slotStartHour(s) === hour);
+    if (!slot) {
+      return withHint(`${label} ${formatDayHours(dayHours)} között vagyunk nyitva, így ${pad2(hour)}:00 órára sajnos nem lehet foglalni. ${freeText}`);
+    }
+    if (isSlotInPast(date, slot)) {
+      return withHint(`A ${slot} idősáv már elkezdődött vagy elmúlt. ${freeText}`);
+    }
+    const remaining = availability[type][slot];
+    if (remaining > 0) {
+      return `Igen! ${label} ${slot} között még ${remaining} szabad ${name} van. ${bookHint}`;
+    }
+    return withHint(`Sajnos ${label.charAt(0).toLowerCase()}${label.slice(1)} ${slot} között már minden ${name} foglalt. ${freeText}`);
+  }
+
+  // Tartalék válaszok, ha nincs Claude API kulcs vagy az AI épp nem elérhető
+  function getOfflineReply(messages: any[]) {
+    const lastUserMessage = [...messages].reverse().find((m) => m?.role === "user")?.text || "";
+    const today = budapestNow().date;
+    const q = parseQuestion(String(lastUserMessage), today);
+
+    // Szabad hely / foglalás (ha van benne időpont, nap vagy játék, az a legfontosabb)
+    if (q.hour !== null || q.has("foglal", "asztal", "szabad", "időpont", "pálya", "gép") ||
+        (q.type && q.has("ma", "holnap", ...WEEKDAY_STEMS, "van", "lehet"))) {
+      return availabilityReply(q.date, q.hour, q.type ?? "pool", today);
+    }
+    if (q.has("nyitva", "nyitvatart", "zárva", "zártok", "mikor", "meddig")) {
+      const hours = WEEK_ORDER.map((day) => `${DAY_NAMES[day]}: ${formatDayHours(OPENING_HOURS[day])}`).join(", ");
+      return `Nyitvatartásunk: ${hours}. Beugrasz?`;
+    }
+    if (q.words.some((w) => ["ár", "ára", "árak", "árat", "áron", "árai", "áruk"].includes(w)) || q.has("mennyi", "óradíj", "díj", "kerül")) {
+      const rates = TABLE_CATEGORIES.map((c) => `${c.name.toLowerCase()} ${formatPrice(c.hourlyRate)}/óra`).join(", ");
+      return `Óradíjaink: ${rates}. Az ételek és italok árait az étlapunkon találod – nézd meg étlapunkat a weboldalon!`;
+    }
+    if (q.has("kaja", "étel", "enni", "eszik", "ennék", "szendvics", "nachos", "étlap", "ital", "inni", "sör", "kávé", "innék")) {
+      return "Nézd meg étlapunkat a weboldalon (Kávézó & Bár menüpont), ott megtalálod a teljes kínálatot árakkal együtt!";
+    }
+    if (q.words.some((w) => ["hol", "hova", "merre", "honnan"].includes(w)) || q.has("cím", "megközelít", "parkol", "odajut")) {
+      return "Újbudán, a Hauszmann Alajos u. 5. szám alatt vagyunk, a Gabányi László Sportcsarnok épületén belül. Gyere be a főbejáraton, ott megtalálsz!";
+    }
+    return "Szia! Sára vagyok, a Club 11 virtuális csaposa. 👋 Kérdezhetsz a szabad asztalokról (pl. „Van ma este 8-ra biliárdasztal?”), a nyitvatartásról, az árakról vagy a megközelítésről. Telefonon is elérsz minket: +36 70 621 4181.";
   }
 
   app.post("/api/chat", async (req, res) => {
@@ -148,7 +315,14 @@ ${menuText("itallap")}
         return;
       }
 
-      const client = getGeminiClient();
+      // Kérdéskorlát: a 12. kérdés után nem válaszolunk, hanem telefonra irányítunk
+      const questionCount = messages.filter((msg: any) => msg?.role === "user").length;
+      if (questionCount > MAX_CHAT_QUESTIONS) {
+        res.json({ text: CHAT_LIMIT_MESSAGE, limitReached: true });
+        return;
+      }
+
+      const client = getClaudeClient();
       if (!client) {
         // Fallback response for offline demo mode (if no API Key is set yet)
         const mockReply = getOfflineReply(messages);
@@ -158,28 +332,56 @@ ${menuText("itallap")}
         return;
       }
 
-      // Map client messages into Gemini parts format
-      const contents = messages.map((msg: any) => ({
-        role: msg.role === 'user' ? 'user' : 'model',
-        parts: [{ text: msg.text }]
+      // Az utolsó 20 üzenetet küldjük; a beszélgetésnek vendég üzenettel kell kezdődnie
+      // (a csapos nyitó üdvözlését kihagyjuk) és vendég üzenettel kell végződnie.
+      const recent = messages
+        .filter((msg: any) => typeof msg?.text === "string" && msg.text.trim())
+        .slice(-20);
+      while (recent.length && recent[0].role !== "user") recent.shift();
+      while (recent.length && recent[recent.length - 1].role !== "user") recent.pop();
+      if (recent.length === 0) {
+        res.json({ text: getOfflineReply(messages) });
+        return;
+      }
+      const conversation: Anthropic.MessageParam[] = recent.map((msg: any) => ({
+        role: msg.role === "user" ? "user" : "assistant",
+        content: String(msg.text).slice(0, 2000),
       }));
 
-      // Call Gemini API using modern SDK
-      const response = await client.models.generateContent({
-        model: "gemini-3.5-flash",
-        contents: contents,
-        config: {
-          systemInstruction: SYSTEM_INSTRUCTION,
-          temperature: 0.8,
-        },
+      const response = await client.messages.create({
+        model: CHAT_MODEL,
+        max_tokens: 1024, // rövid, csevegős válaszok
+        temperature: 0.4,
+        // Az állandó szabályok és árlista, utána az élő adatok (idő, szabad helyek)
+        system: [
+          { type: "text", text: SYSTEM_INSTRUCTION },
+          { type: "text", text: buildLiveContext() },
+        ],
+        messages: conversation,
       });
 
-      const replyText = response.text || "Sajnálom, de most egy kicsit összekeveredtek a golyók. Kérlek, kérdezd újra, vagy hívj minket telefonon!";
+      const replyText = response.content
+        .filter((block): block is Anthropic.TextBlock => block.type === "text")
+        .map((block) => block.text)
+        .join("\n")
+        .trim();
+      if (response.stop_reason === "refusal" || !replyText) {
+        res.json({ text: "Erre most nem tudok válaszolni. Kérdezz a nyitvatartásról, az árakról vagy a szabad asztalokról, vagy hívj minket: +36 70 621 4181!" });
+        return;
+      }
       res.json({ text: replyText });
 
     } catch (err: any) {
-      console.error("Gemini API Error (falling back to offline handler):", err);
-      // Fallback gracefully on any model/service errors (like 503 UNAVAILABLE or 429)
+      if (err instanceof Anthropic.AuthenticationError) {
+        console.error("Claude API: érvénytelen ANTHROPIC_API_KEY – tartalék válasz megy ki.");
+      } else if (err instanceof Anthropic.RateLimitError) {
+        console.error("Claude API: túl sok kérés (429) – tartalék válasz megy ki.");
+      } else if (err instanceof Anthropic.APIError) {
+        console.error(`Claude API hiba ${err.status}: ${err.message} – tartalék válasz megy ki.`);
+      } else {
+        console.error("Chat hiba (tartalék válasz megy ki):", err);
+      }
+      // Bármilyen AI-hiba esetén a beépített tartalék válasz megy ki, hogy a vendég ne maradjon válasz nélkül
       try {
         const fallbackReply = getOfflineReply(req.body.messages || []);
         res.json({ text: fallbackReply });
@@ -373,13 +575,6 @@ ${menuText("itallap")}
   // foglalás lehet, ahány asztal/gép van belőle (pl. 6 pool asztal -> 6 foglalás).
   // Zárt napra, zárás utáni vagy már elkezdődött idősávra nem lehet foglalni.
   // ------------------------------------------------------------------
-  const readBookings = (): Booking[] => JSON.parse(fs.readFileSync(bookingsFilePath, "utf-8"));
-  const writeBookings = (bookings: Booking[]) =>
-    fs.writeFileSync(bookingsFilePath, JSON.stringify(bookings, null, 2), "utf-8");
-
-  const countBooked = (bookings: Booking[], type: TableType, date: string, slot: string) =>
-    bookings.filter((b) => b.type === type && b.date === date && b.timeSlots.includes(slot)).length;
-
   const isValidDate = (date: unknown): date is string =>
     typeof date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(date) && !isNaN(Date.parse(date));
 
@@ -389,17 +584,7 @@ ${menuText("itallap")}
     if (!isValidDate(date)) {
       return res.status(400).json({ error: "Érvénytelen dátum!" });
     }
-    const bookings = readBookings();
-    const slots = getSlotsForDate(date);
-    const availability: Record<string, Record<string, number>> = {};
-    for (const category of TABLE_CATEGORIES) {
-      availability[category.type] = {};
-      for (const slot of slots) {
-        availability[category.type][slot] = isSlotInPast(date, slot)
-          ? 0
-          : Math.max(0, category.count - countBooked(bookings, category.type, date, slot));
-      }
-    }
+    const { slots, availability } = computeAvailability(date);
     res.json({ date, closed: slots.length === 0, slots, availability });
   });
 
