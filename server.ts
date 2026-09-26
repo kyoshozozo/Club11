@@ -8,6 +8,7 @@ import path from "path";
 import { GoogleGenAI } from "@google/genai";
 import dotenv from "dotenv";
 import fs from "fs";
+import crypto from "crypto";
 
 // Load environment variables
 dotenv.config();
@@ -160,14 +161,6 @@ async function startServer() {
     }
   });
 
-  // Admin authentication sessions
-  const activeAdminTokens = new Set<string>();
-
-  function isValidAdminToken(token?: string): boolean {
-    if (!token) return false;
-    return activeAdminTokens.has(token);
-  }
-
   // Gallery Endpoints
   app.get("/api/gallery", (req, res) => {
     try {
@@ -182,40 +175,75 @@ async function startServer() {
     }
   });
 
-  app.post("/api/gallery/login", (req, res) => {
-    const { password } = req.body;
-    const configuredPassword = process.env.ADMIN_PASSWORD?.trim();
+  // ------------------------------------------------------------------
+  // ADMIN AUTHENTICATION (galéria kezelés)
+  // A jelszó NEM a kódban van, hanem az ADMIN_PASSWORD környezeti változóban.
+  // Sikeres belépéskor a szerver kriptográfiailag véletlen, lejáró tokent ad ki.
+  // ------------------------------------------------------------------
+  const TOKEN_TTL_MS = 12 * 60 * 60 * 1000; // a token 12 óráig érvényes
+  const adminSessions = new Map<string, number>(); // token -> lejárat (ms)
 
+  function isValidAdminToken(token?: unknown): boolean {
+    if (typeof token !== "string" || !token) return false;
+    const expiry = adminSessions.get(token);
+    if (!expiry) return false;
+    if (Date.now() > expiry) {
+      adminSessions.delete(token);
+      return false;
+    }
+    return true;
+  }
+
+  // Időzítés-biztos jelszó-összehasonlítás
+  function passwordMatches(input: string, configured: string): boolean {
+    const a = crypto.createHash("sha256").update(input).digest();
+    const b = crypto.createHash("sha256").update(configured).digest();
+    return crypto.timingSafeEqual(a, b);
+  }
+
+  // Védelem a jelszó-próbálgatás ellen: 5 hibás próbálkozás / 15 perc
+  const LOGIN_WINDOW_MS = 15 * 60 * 1000;
+  const LOGIN_MAX_FAILS = 5;
+  const failedLogins = new Map<string, { count: number; first: number }>();
+
+  app.post("/api/gallery/login", (req, res) => {
+    const configuredPassword = process.env.ADMIN_PASSWORD?.trim();
     if (!configuredPassword) {
-      return res.status(403).json({ 
-        success: false, 
-        error: "Az adminisztrátori belépés jelenleg le van tiltva, mert nincs beállítva az ADMIN_PASSWORD környezeti változó!" 
+      return res.status(403).json({
+        success: false,
+        error: "Az adminisztrátori belépés jelenleg le van tiltva, mert nincs beállítva az ADMIN_PASSWORD környezeti változó!"
       });
     }
 
-    if (password === configuredPassword) {
-      const token = "club11_adm_" + Math.random().toString(36).substring(2) + Date.now().toString(36);
-      activeAdminTokens.add(token);
-      res.json({ success: true, token });
-    } else {
-      res.status(401).json({ success: false, error: "Hibás jelszó!" });
+    const key = req.ip || "unknown";
+    const now = Date.now();
+    const entry = failedLogins.get(key);
+    if (entry && now - entry.first > LOGIN_WINDOW_MS) failedLogins.delete(key);
+    const current = failedLogins.get(key);
+    if (current && current.count >= LOGIN_MAX_FAILS) {
+      return res.status(429).json({ success: false, error: "Túl sok hibás próbálkozás. Próbáld újra 15 perc múlva." });
     }
+
+    const { password } = req.body || {};
+    if (typeof password === "string" && passwordMatches(password, configuredPassword)) {
+      failedLogins.delete(key);
+      const token = crypto.randomBytes(32).toString("hex");
+      adminSessions.set(token, now + TOKEN_TTL_MS);
+      return res.json({ success: true, token });
+    }
+
+    if (current) current.count += 1;
+    else failedLogins.set(key, { count: 1, first: now });
+    return res.status(401).json({ success: false, error: "Hibás jelszó!" });
   });
 
   app.post("/api/gallery/verify", (req, res) => {
-    const { token } = req.body;
-    if (token && isValidAdminToken(token)) {
-      res.json({ valid: true });
-    } else {
-      res.json({ valid: false });
-    }
+    res.json({ valid: isValidAdminToken(req.body?.token) });
   });
 
   app.post("/api/gallery/logout", (req, res) => {
-    const { token } = req.body;
-    if (token) {
-      activeAdminTokens.delete(token);
-    }
+    const { token } = req.body || {};
+    if (typeof token === "string") adminSessions.delete(token);
     res.json({ success: true });
   });
 
