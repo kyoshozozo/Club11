@@ -246,7 +246,7 @@ export default function About() {
           
           <div className="w-full md:w-1/3 space-y-3">
             <span className="text-[10px] font-mono text-emerald-400 uppercase tracking-wider block">Hogyan találsz be?</span>
-            <h4 className="font-sans font-black text-lg text-white">Megközelítés a Sportcsarnokon belül</h4>
+            <h4 className="font-sans font-black text-lg text-white">Megközelítés sporttelepen belül</h4>
             <p className="text-xs text-slate-400 leading-relaxed font-sans">
               A Club 11 a <strong className="text-white">Gabányi László Sportcsarnok</strong> területén található. A sportcsarnok <strong className="text-white">főbejáratán</strong> belépve fordulj <strong className="text-white">balra</strong>: az <strong className="text-white">első ajtónál</strong> találod a klubot.
             </p>

@@ -178,9 +178,13 @@ export default function Hero({ onStartBooking, onExploreMenu, onOpenChat }: Hero
               <div className="p-6 space-y-5 bg-gradient-to-b from-slate-900 to-slate-950">
                 <div className="space-y-2">
                   <h4 className="text-sm font-bold text-white uppercase tracking-wider">Miért a Club 11?</h4>
-                  <p className="text-xs text-slate-400 leading-relaxed font-sans">
-                    Több mint egy biliárdszalon: családi vállalkozásként olyan helyet teremtettünk, ahol a játék mellé egy finom Illy kávé, egy retró melegszendvics vagy egy hideg csapolt sör is jár. Gyere egyedül, a barátaiddal vagy a családdal!
-                  </p>
+                  <div className="text-xs text-slate-400 leading-relaxed font-sans space-y-2">
+                    <p>A Sport bisztró, melyet a családommal hoztunk létre, egy gyermekkori emlék megvalósulása.</p>
+                    <p>Régen több olyan közösségteremtő létesítmény volt, mint amilyen mi is szeretnénk lenni. Mára a club szót teljesen mással azonosítják; szeretnénk, ha a 21. századra módosult értelem nem vezetne félre senkit.</p>
+                    <p>Egy olyan helyet biztosítunk, amilyenben én annak idején felnőttem: ahol nyugodtan le lehet ülni kártyázni, csocsózni vagy beszélgetni egy sör mellett a haverokkal. Ahol bárkihez odamehetsz, ha nincs kivel dartsozni, és nem fognak kinézni.</p>
+                    <p>Biliárdra is van lehetőség az óriási közös térben, amit igény esetén szeparálni is tudunk.</p>
+                    <p className="text-slate-300 font-semibold">Egy igazi klubélményt szeretnénk adni a betérők számára.</p>
+                  </div>
                 </div>
 
                 <div className="border-t border-slate-800/80 pt-4 space-y-3 text-xs font-mono">

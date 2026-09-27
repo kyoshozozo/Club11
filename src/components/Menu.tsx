@@ -4,12 +4,43 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { MENU_ITEMS } from '../data';
-import { MenuItem } from '../types';
-import { Search, Heart, Award, Sparkles, AlertCircle } from 'lucide-react';
+import { MENU_ITEMS, TABLE_CATEGORIES } from '../data';
+import { Search, Heart, Award, AlertCircle } from 'lucide-react';
+
+type Category = 'etlap' | 'itallap' | 'jatekok';
+
+interface PriceCard {
+  id: string;
+  name: string;
+  description?: string;
+  priceLabel: string;
+  isPopular?: boolean;
+}
+
+const formatPrice = (price: number | string) =>
+  typeof price === 'number' ? `${price.toLocaleString('hu-HU')} Ft` : `${price} Ft`;
+
+// A lapok kártyái: étlap és itallap az árlistából, a játékok az asztalok óradíjaiból
+const CARDS: Record<Category, PriceCard[]> = {
+  etlap: MENU_ITEMS.filter(i => i.category === 'etlap').map(i => ({ ...i, priceLabel: formatPrice(i.price) })),
+  itallap: MENU_ITEMS.filter(i => i.category === 'itallap').map(i => ({ ...i, priceLabel: formatPrice(i.price) })),
+  jatekok: TABLE_CATEGORIES.map(c => ({
+    id: `game-${c.type}`,
+    name: c.name,
+    description: `${c.description} (${c.count} db a szalonban)`,
+    priceLabel: `${formatPrice(c.hourlyRate)} / óra`,
+  })),
+};
+
+// A kártyákon a megnevezés és az ár színe lapok szerint: étlap és játékok zöld, itallap sárga
+const ACCENT: Record<Category, string> = {
+  etlap: 'text-emerald-400',
+  itallap: 'text-amber-400',
+  jatekok: 'text-emerald-400',
+};
 
 export default function Menu() {
-  const [selectedCategory, setSelectedCategory] = useState<'etlap' | 'itallap'>('etlap');
+  const [selectedCategory, setSelectedCategory] = useState<Category>('etlap');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [favorites, setFavorites] = useState<string[]>([]);
 
@@ -39,15 +70,16 @@ export default function Menu() {
   const categories = [
     { id: 'etlap', label: 'Étlap' },
     { id: 'itallap', label: 'Itallap' },
+    { id: 'jatekok', label: 'Játékok' },
   ] as const;
 
   // Filter items based on category and search query
-  const filteredItems = MENU_ITEMS.filter((item) => {
-    const matchesCategory = item.category === selectedCategory;
-    const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                          (item.description && item.description.toLowerCase().includes(searchQuery.toLowerCase()));
-    return matchesCategory && matchesSearch;
-  });
+  const query = searchQuery.toLowerCase();
+  const filteredItems = CARDS[selectedCategory].filter((item) =>
+    item.name.toLowerCase().includes(query) ||
+    (item.description && item.description.toLowerCase().includes(query))
+  );
+  const accent = ACCENT[selectedCategory];
 
   return (
     <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-10 max-w-7xl mx-auto my-12 shadow-2xl" id="menu-section">
@@ -120,7 +152,7 @@ export default function Menu() {
                           <Award className="w-2.5 h-2.5" /> Közkedvelt
                         </span>
                       )}
-                      <h3 className="font-bold text-base text-white font-sans group-hover:text-emerald-400 transition-colors">
+                      <h3 className={`font-bold text-base ${accent} font-sans group-hover:text-emerald-400 transition-colors`}>
                         {item.name}
                       </h3>
                     </div>
@@ -144,8 +176,8 @@ export default function Menu() {
 
                 <div className="flex items-center justify-between border-t border-slate-800/40 pt-3 mt-3">
                   <span className="text-xs font-mono text-slate-500">Ár</span>
-                  <span className="font-sans font-black text-lg text-white group-hover:scale-105 transition-all">
-                    {typeof item.price === 'number' ? `${item.price.toLocaleString('hu-HU')} Ft` : `${item.price} Ft`}
+                  <span className={`font-sans font-black text-lg ${accent} group-hover:scale-105 transition-all`}>
+                    {item.priceLabel}
                   </span>
                 </div>
 
