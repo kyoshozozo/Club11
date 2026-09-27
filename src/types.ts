@@ -3,14 +3,14 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-export type TableType = 'pool' | 'darts' | 'foosball';
+export type TableType = 'pool' | 'darts' | 'foosball' | 'seating';
 
 // A vendég csak a játéktípust választja, a konkrét asztalt a személyzet osztja ki.
 export interface TableCategory {
   type: TableType;
   name: string;
   description: string;
-  hourlyRate: number; // in HUF
+  hourlyRate: number; // in HUF (0 = díjmentes, pl. leülős asztal)
   count: number; // ennyi asztal/gép van ebből, egy idősávban legfeljebb ennyi foglalás lehet
 }
 
@@ -23,6 +23,8 @@ export interface Booking {
   timeSlot: string; // e.g., "14:00 - 16:00 (2 óra)"
   durationHours: number;
   totalPrice: number; // total price in HUF
+  partySize: number; // hány fő érkezik
+  note?: string; // megjegyzés, kérés
   name: string;
   email: string;
   phone: string;

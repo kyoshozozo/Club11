@@ -28,7 +28,21 @@ export const TABLE_CATEGORIES: TableCategory[] = [
     hourlyRate: 1400,
     count: 2,
   },
+  {
+    type: 'seating',
+    name: 'Leülős asztal',
+    description: 'A fogyasztás kötelező.',
+    hourlyRate: 0, // díjmentes
+    count: 6,
+  },
 ];
+
+// Csak a fizetős játékok (az árlistán, a főoldali "Játék" pillérben és az óradíjaknál ezek szerepelnek)
+export const GAME_CATEGORIES = TABLE_CATEGORIES.filter(c => c.hourlyRate > 0);
+
+// Online legfeljebb ennyi fős foglalás adható le; efölött csak e-mailben (házirend)
+export const MAX_ONLINE_PARTY_SIZE = 6;
+export const CLUB_EMAIL = 'club11buda@gmail.com';
 
 export const getTableCategory = (type: TableType) => TABLE_CATEGORIES.find(c => c.type === type)!;
 
