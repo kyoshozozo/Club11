@@ -16,7 +16,7 @@ import {
   CLUB_EMAIL,
 } from '../data';
 import { Booking, TableType } from '../types';
-import { Calendar, Clock, CheckCircle2, AlertCircle, Trash2, Gamepad2, Loader2, Users } from 'lucide-react';
+import { Calendar, Clock, CheckCircle2, AlertCircle, Trash2, Gamepad2, Loader2, Users, X } from 'lucide-react';
 
 const formatHuf = (amount: number) => `${amount.toLocaleString('hu-HU')} Ft`;
 
@@ -27,6 +27,9 @@ interface Availability {
   slots: string[];
   availability: Record<string, Record<string, number>>;
 }
+
+// Játékonként külön megjegyzett idősávok: így több dolog is foglalható egyszerre
+type Selections = Partial<Record<TableType, string[]>>;
 
 function loadMyBookings(): Booking[] {
   try {
@@ -50,7 +53,7 @@ export default function BookingSystem() {
 
   const [selectedType, setSelectedType] = useState<TableType>('pool');
   const [selectedDate, setSelectedDate] = useState<string>(today);
-  const [selectedSlots, setSelectedSlots] = useState<string[]>([]);
+  const [selections, setSelections] = useState<Selections>({});
 
   // User info
   const [name, setName] = useState('');
@@ -66,13 +69,19 @@ export default function BookingSystem() {
 
   // Modal and submission states
   const [showModal, setShowModal] = useState<boolean>(false);
-  const [modalData, setModalData] = useState<Booking | null>(null);
+  const [modalData, setModalData] = useState<Booking[] | null>(null);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
   const category = getTableCategory(selectedType);
-  const isFree = category.hourlyRate === 0;
+  const currentSlots = selections[selectedType] ?? [];
   const people = Number(partySize);
   const tooManyPeople = Number.isInteger(people) && people > MAX_ONLINE_PARTY_SIZE;
+
+  // Az összes kijelölt tétel (játékonként), a bal oldali sorrendben
+  const chosenItems = TABLE_CATEGORIES
+    .filter(c => (selections[c.type]?.length ?? 0) > 0)
+    .map(c => ({ category: c, slots: selections[c.type]! }));
+  const totalPrice = chosenItems.reduce((sum, i) => sum + i.slots.length * i.category.hourlyRate, 0);
 
   // Saját (ebben a böngészőben leadott) foglalások, a már elmúlt napok nélkül
   useEffect(() => {
@@ -102,15 +111,34 @@ export default function BookingSystem() {
     if (selectedDate) fetchAvailability(selectedDate);
   }, [selectedDate, fetchAvailability]);
 
+  // Ha a foglaltság frissül, a közben betelt vagy elmúlt idősávok kikerülnek a kijelölésből
+  useEffect(() => {
+    if (!availability) return;
+    setSelections(prev => {
+      const next: Selections = {};
+      for (const [type, slots] of Object.entries(prev) as [TableType, string[]][]) {
+        const kept = slots.filter(slot =>
+          !isSlotInPast(selectedDate, slot) && (availability.availability[type]?.[slot] ?? 0) > 0);
+        if (kept.length > 0) next[type] = kept;
+      }
+      return next;
+    });
+  }, [availability]);
+
   const remainingFor = (slot: string) => availability?.availability[selectedType]?.[slot] ?? 0;
 
   const handleSlotClick = (slot: string) => {
-    setSelectedSlots((prev) => {
-      if (prev.includes(slot)) return prev.filter((s) => s !== slot);
+    setSelections(prev => {
+      const current = prev[selectedType] ?? [];
       const order = availability?.slots ?? [];
-      return [...prev, slot].sort((a, b) => order.indexOf(a) - order.indexOf(b));
+      const updated = current.includes(slot)
+        ? current.filter(s => s !== slot)
+        : [...current, slot].sort((a, b) => order.indexOf(a) - order.indexOf(b));
+      return { ...prev, [selectedType]: updated };
     });
   };
+
+  const clearType = (type: TableType) => setSelections(prev => ({ ...prev, [type]: [] }));
 
   const handleBookingSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -120,13 +148,12 @@ export default function BookingSystem() {
       setErrorMsg('Kérlek válassz egy olyan napot, amikor nyitva vagyunk!');
       return;
     }
-    if (selectedSlots.length === 0) {
+    if (chosenItems.length === 0) {
       setErrorMsg('Kérlek válassz ki legalább egy idősávot!');
       return;
     }
-    if (selectedSlots.some(slot => isSlotInPast(selectedDate, slot))) {
-      setErrorMsg('A kiválasztott idősávok közül legalább egy már elkezdődött. Kérlek válassz újra!');
-      setSelectedSlots([]);
+    if (chosenItems.some(i => i.slots.some(slot => isSlotInPast(selectedDate, slot)))) {
+      setErrorMsg('A kiválasztott idősávok közül legalább egy már elkezdődött. Kérlek nézd át a kijelölést!');
       fetchAvailability(selectedDate);
       return;
     }
@@ -156,24 +183,27 @@ export default function BookingSystem() {
       const res = await fetch('/api/bookings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type: selectedType, date: selectedDate, timeSlots: selectedSlots, name, email, phone, partySize: people, note }),
+        body: JSON.stringify({
+          date: selectedDate,
+          items: chosenItems.map(i => ({ type: i.category.type, timeSlots: i.slots })),
+          name, email, phone, partySize: people, note,
+        }),
       });
       const data = await res.json();
       if (!res.ok) {
         setErrorMsg(data.error || 'Nem sikerült elküldeni a foglalást. Kérlek próbáld újra!');
-        setSelectedSlots([]);
         fetchAvailability(selectedDate);
         return;
       }
 
-      const booking = data as Booking;
-      const updated = [booking, ...myBookings];
+      const created = data.bookings as Booking[];
+      const updated = [...created, ...myBookings];
       setMyBookings(updated);
       saveMyBookings(updated);
 
-      setModalData(booking);
+      setModalData(created);
       setShowModal(true);
-      setSelectedSlots([]);
+      setSelections({});
       setNote('');
       fetchAvailability(selectedDate);
     } catch {
@@ -206,6 +236,8 @@ export default function BookingSystem() {
   };
 
   const selectedDayName = selectedDate ? DAY_NAMES[dayOfWeek(selectedDate)] : '';
+  const modalTotal = modalData ? modalData.reduce((sum, b) => sum + b.totalPrice, 0) : 0;
+  const first = modalData?.[0];
 
   return (
     <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-10 max-w-7xl mx-auto my-12 shadow-2xl" id="booking-section">
@@ -213,7 +245,7 @@ export default function BookingSystem() {
         <span className="text-xs font-mono uppercase tracking-widest text-emerald-400 font-bold block">Online Asztalfoglalás</span>
         <h2 className="text-3xl sm:text-4xl font-black text-white tracking-tight">Foglalj helyet nálunk!</h2>
         <p className="text-slate-400 max-w-2xl mx-auto text-sm">
-          Válaszd ki, mivel szeretnél játszani, és mikor. A konkrét asztalt érkezéskor a személyzet jelöli ki.
+          Válaszd ki, mit és mikor szeretnél foglalni – akár több dolgot is egyszerre. A konkrét asztalt érkezéskor a személyzet jelöli ki.
           A foglalás akkor érvényes, ha visszaigazolást kapsz róla.
         </p>
       </div>
@@ -223,21 +255,24 @@ export default function BookingSystem() {
         {/* Left column: Game type selection */}
         <div className="lg:col-span-5 space-y-3">
           <label className="text-xs font-mono uppercase tracking-wider text-slate-400 font-bold block">1. Mit szeretnél foglalni?</label>
+          <p className="text-[11px] text-slate-500">
+            Több dolgot is foglalhatsz: jelöld ki az idősávokat, majd kattints egy másik kockára – a korábbi kijelölésed megmarad.
+          </p>
           <div className="grid grid-cols-1 gap-4">
             {TABLE_CATEGORIES.map((cat) => {
-              const isSelected = selectedType === cat.type;
+              const isActive = selectedType === cat.type;
+              const chosenCount = selections[cat.type]?.length ?? 0;
               return (
                 <button
                   key={cat.type}
                   type="button"
                   id={`type-card-${cat.type}`}
-                  onClick={() => {
-                    setSelectedType(cat.type);
-                    setSelectedSlots([]);
-                  }}
+                  onClick={() => setSelectedType(cat.type)}
                   className={`p-4 rounded-2xl border transition-all text-left ${
-                    isSelected
+                    isActive
                       ? 'bg-emerald-500/10 border-emerald-500 shadow-md shadow-emerald-500/5'
+                      : chosenCount > 0
+                      ? 'bg-slate-950/60 border-emerald-500/40 hover:border-emerald-500/70'
                       : 'bg-slate-950/60 border-slate-800 hover:border-slate-700'
                   }`}
                 >
@@ -252,10 +287,12 @@ export default function BookingSystem() {
                   <p className="text-[11px] text-slate-400 leading-relaxed pt-1">{cat.description}</p>
                   <div className="flex items-center justify-between border-t border-slate-800/60 pt-2 mt-2">
                     <span className="text-[10px] font-mono text-slate-500">{cat.hourlyRate > 0 ? `${cat.count} db a szalonban` : ''}</span>
-                    {isSelected ? (
-                      <span className="text-xs font-bold font-mono text-emerald-400 flex items-center gap-1">
-                        <CheckCircle2 className="w-4 h-4" /> Kijelölve
+                    {chosenCount > 0 ? (
+                      <span className="text-xs font-bold font-mono text-emerald-400 flex items-center gap-1" id={`type-card-count-${cat.type}`}>
+                        <CheckCircle2 className="w-4 h-4" /> {chosenCount} idősáv kijelölve
                       </span>
+                    ) : isActive ? (
+                      <span className="text-xs font-bold font-mono text-emerald-400">Most ezt választod</span>
                     ) : (
                       <span className="text-xs font-mono text-slate-500">Kijelölés</span>
                     )}
@@ -271,7 +308,7 @@ export default function BookingSystem() {
           <form onSubmit={handleBookingSubmit} className="space-y-5">
             <h3 className="font-sans font-black text-lg text-white border-b border-slate-800 pb-3 flex items-center gap-2">
               <Gamepad2 className="w-5 h-5 text-emerald-400" />
-              Foglalási adatok – {category.name}
+              Foglalási adatok
             </h3>
 
             {/* Date input */}
@@ -288,7 +325,7 @@ export default function BookingSystem() {
                 onChange={(e) => {
                   const value = e.target.value;
                   setSelectedDate(value && value < today ? today : value);
-                  setSelectedSlots([]);
+                  setSelections({}); // más napra minden kijelölés újrakezdődik
                   setErrorMsg('');
                 }}
                 className="w-full bg-slate-900 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 font-mono [color-scheme:dark]"
@@ -300,15 +337,15 @@ export default function BookingSystem() {
               <div className="flex items-center justify-between">
                 <label className="text-xs font-mono uppercase tracking-wider text-slate-400 font-bold flex items-center gap-1.5">
                   <Clock className="w-3.5 h-3.5 text-emerald-400" />
-                  3. Idősávok
+                  3. Idősávok – <span className="text-emerald-400 normal-case">{category.name}</span>
                 </label>
-                {selectedSlots.length > 0 && (
+                {currentSlots.length > 0 && (
                   <button
                     type="button"
-                    onClick={() => setSelectedSlots([])}
+                    onClick={() => clearType(selectedType)}
                     className="text-[11px] font-mono text-slate-400 hover:text-rose-400 underline transition-colors"
                   >
-                    Törlés ({selectedSlots.length})
+                    Törlés ({currentSlots.length})
                   </button>
                 )}
               </div>
@@ -326,28 +363,16 @@ export default function BookingSystem() {
                   <AlertCircle className="w-4 h-4 shrink-0" />
                   <span>{selectedDayName} zárva vagyunk, erre a napra nem lehet foglalni. Kérlek válassz másik napot!</span>
                 </div>
+              ) : availability && !availability.availability[selectedType] ? (
+                <div className="flex items-start gap-2 p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-xs text-amber-300" id="booking-outdated-msg">
+                  <AlertCircle className="w-4 h-4 shrink-0" />
+                  <span>A foglaltsági adatok nem frissek. Kérlek töltsd újra az oldalt!</span>
+                </div>
               ) : availability ? (
                 <>
                   <p className="text-[11px] text-slate-400">
-                    Kattints az idősávokra a kijelöléshez! Akár <strong className="text-emerald-400 font-bold">több idősávot</strong> is lefoglalhatsz egyszerre.
+                    Kattints az idősávokra a kijelöléshez! Akár <strong className="text-emerald-400 font-bold">több idősávot</strong> is kijelölhetsz.
                   </p>
-
-                  {selectedSlots.length > 0 && (
-                    <div className="bg-emerald-950/40 border border-emerald-500/30 p-3 rounded-xl flex items-center justify-between text-xs font-mono">
-                      <div className="space-y-0.5">
-                        <span className="text-[10px] text-emerald-400 font-bold block uppercase tracking-wider">Kijelölt Időtartam</span>
-                        <span className="text-white font-bold">{formatSlotsSummary(selectedSlots)}</span>
-                      </div>
-                      {!isFree && (
-                        <div className="text-right">
-                          <span className="text-[10px] text-emerald-400 font-bold block uppercase tracking-wider">Várható Díj</span>
-                          <span className="text-emerald-300 font-black text-sm">
-                            {formatHuf(selectedSlots.length * category.hourlyRate)}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  )}
 
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                     {availability.slots.map((slot) => {
@@ -355,7 +380,7 @@ export default function BookingSystem() {
                       const remaining = remainingFor(slot);
                       const isFull = !isPast && remaining <= 0;
                       const isDisabled = isPast || isFull;
-                      const isSelected = selectedSlots.includes(slot);
+                      const isSelected = currentSlots.includes(slot);
                       const safeSlotId = slot.replace(/[^a-zA-Z0-9]/g, '-');
 
                       return (
@@ -383,6 +408,39 @@ export default function BookingSystem() {
                   </div>
                 </>
               ) : null}
+
+              {/* Az összes kijelölt tétel összesítése */}
+              {chosenItems.length > 0 && (
+                <div className="bg-emerald-950/40 border border-emerald-500/30 p-3 rounded-xl text-xs font-mono space-y-2" id="booking-summary">
+                  <span className="text-[10px] text-emerald-400 font-bold block uppercase tracking-wider">A foglalásod</span>
+                  {chosenItems.map(({ category: c, slots }) => (
+                    <div key={c.type} className="flex items-center justify-between gap-2" id={`summary-item-${c.type}`}>
+                      <div className="min-w-0">
+                        <span className="text-white font-bold">{c.name}</span>
+                        <span className="text-slate-300"> · {formatSlotsSummary(slots)}</span>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className="text-emerald-300 font-bold">{c.hourlyRate > 0 ? formatHuf(slots.length * c.hourlyRate) : 'díjmentes'}</span>
+                        <button
+                          type="button"
+                          onClick={() => clearType(c.type)}
+                          title={`${c.name} eltávolítása`}
+                          aria-label={`${c.name} eltávolítása`}
+                          className="p-1 rounded-md text-slate-400 hover:text-rose-400 hover:bg-rose-500/10"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                  {totalPrice > 0 && (
+                    <div className="flex items-center justify-between border-t border-emerald-500/20 pt-2">
+                      <span className="text-[10px] text-emerald-400 font-bold uppercase tracking-wider">Várható díj összesen</span>
+                      <span className="text-emerald-300 font-black text-sm">{formatHuf(totalPrice)}</span>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Personal Details form fields */}
@@ -474,16 +532,16 @@ export default function BookingSystem() {
               <button
                 type="submit"
                 id="booking-submit-btn"
-                disabled={selectedSlots.length === 0 || isSubmitting}
+                disabled={chosenItems.length === 0 || isSubmitting}
                 className={`w-full py-4 rounded-xl font-bold text-sm tracking-wide transition-all uppercase flex items-center justify-center gap-2 ${
-                  selectedSlots.length === 0 || isSubmitting
+                  chosenItems.length === 0 || isSubmitting
                     ? 'bg-slate-800 text-slate-500 cursor-not-allowed border border-slate-700/50'
                     : 'bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 shadow-lg shadow-emerald-500/20 active:scale-[0.99]'
                 }`}
               >
                 {isSubmitting
                   ? 'Foglalás küldése...'
-                  : selectedSlots.length === 0
+                  : chosenItems.length === 0
                   ? 'Kérlek válassz idősávot a foglaláshoz'
                   : 'Foglalási igény elküldése'}
               </button>
@@ -541,7 +599,7 @@ export default function BookingSystem() {
       )}
 
       {/* Confirmation Modal */}
-      {showModal && modalData && (
+      {showModal && modalData && first && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md">
           <div
             id="booking-confirmation-modal"
@@ -566,16 +624,15 @@ export default function BookingSystem() {
 
             <div className="bg-slate-950/70 border border-slate-800 rounded-2xl p-4 space-y-2.5 text-xs font-mono">
               {[
-                ['Játék:', modalData.typeName],
-                ['Dátum:', `${modalData.date} (${DAY_NAMES[dayOfWeek(modalData.date)]})`],
-                ['Idősáv(ok):', modalData.timeSlot],
-                ['Létszám:', `${modalData.partySize} fő`],
-                ['Foglaló neve:', modalData.name],
-                ['Telefonszám:', modalData.phone],
-                ['E-mail:', modalData.email],
-                ...(modalData.note ? [['Megjegyzés, kérés:', modalData.note]] : []),
-              ].map(([label, value]) => (
-                <div key={label} className="flex justify-between gap-4 py-1 border-b border-slate-850">
+                ['Dátum:', `${first.date} (${DAY_NAMES[dayOfWeek(first.date)]})`],
+                ...modalData.map(b => [`${b.typeName}:`, b.timeSlot]),
+                ['Létszám:', `${first.partySize} fő`],
+                ['Foglaló neve:', first.name],
+                ['Telefonszám:', first.phone],
+                ['E-mail:', first.email],
+                ...(first.note ? [['Megjegyzés, kérés:', first.note]] : []),
+              ].map(([label, value], index) => (
+                <div key={`${label}-${index}`} className="flex justify-between gap-4 py-1 border-b border-slate-850">
                   <span className="text-slate-400">{label}</span>
                   <span className="font-bold text-white text-right break-all">{value}</span>
                 </div>
@@ -583,7 +640,7 @@ export default function BookingSystem() {
               <div className="flex justify-between py-1 pt-1">
                 <span className="text-slate-400">Várható fizetendő:</span>
                 <span className="font-black text-emerald-400 text-sm text-right">
-                  {modalData.totalPrice > 0 ? formatHuf(modalData.totalPrice) : 'Díjmentes – a fogyasztás kötelező'}
+                  {modalTotal > 0 ? formatHuf(modalTotal) : 'Díjmentes – a fogyasztás kötelező'}
                 </span>
               </div>
             </div>
