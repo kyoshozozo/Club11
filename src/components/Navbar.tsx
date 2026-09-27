@@ -20,7 +20,7 @@ export default function Navbar({ activeSection, setActiveSection, isChatOpen, se
   const navItems = [
     { id: 'home', label: 'Főoldal', icon: Layers },
     { id: 'booking', label: 'Asztalfoglalás', icon: Clock },
-    { id: 'menu', label: 'Kávézó & Bár', icon: Coffee },
+    { id: 'menu', label: 'Kávézó & Bisztró', icon: Coffee },
     { id: 'gallery', label: 'Galéria', icon: Camera },
     { id: 'posts', label: 'Hírek', icon: BookOpen },
     { id: 'about', label: 'Kapcsolat', icon: MapPin },

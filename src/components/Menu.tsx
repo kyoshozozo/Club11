@@ -54,7 +54,7 @@ export default function Menu() {
       
       {/* Header */}
       <div className="text-center space-y-4 mb-10">
-        <span className="text-xs font-mono uppercase tracking-widest text-emerald-400 font-bold block">Kávézó, Bár & Snackek</span>
+        <span className="text-xs font-mono uppercase tracking-widest text-emerald-400 font-bold block">Kávézó, Bisztró & Snackek</span>
         <h2 className="text-3xl sm:text-4xl font-black text-white tracking-tight">Áraink</h2>
         <p className="text-slate-400 max-w-2xl mx-auto text-sm">
           Frissülj fel a játék közben! Kiváló italok, kávék, sörök és ínycsiklandó meleg ételek, snackek várnak rád.

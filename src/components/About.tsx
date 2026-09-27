@@ -121,7 +121,7 @@ export default function About() {
                 <div>
                   <h4 className="font-semibold text-sm text-white">Megközelítés</h4>
                   <p className="text-xs text-slate-400 font-sans leading-relaxed pt-1">
-                    M4 metróval, 17, 41, 47, 56 villamosokkal (Hauszmann Alajos utca megálló).
+                    M4 metróval, valamint 1, 17, 41, 47, 56 villamosokkal (Hauszmann Alajos utca megálló).
                   </p>
                 </div>
               </div>
@@ -248,7 +248,7 @@ export default function About() {
             <span className="text-[10px] font-mono text-emerald-400 uppercase tracking-wider block">Hogyan találsz be?</span>
             <h4 className="font-sans font-black text-lg text-white">Megközelítés a Sportcsarnokon belül</h4>
             <p className="text-xs text-slate-400 leading-relaxed font-sans">
-              A **Gabányi László Sportcsarnok** főbejáratán belépve menj közvetlenül előre a folyosón. Kövesd a falon elhelyezett biliárdgolyós és **Club 11** táblákat. A szalonunk tágas játéktérrel és külön kávézó terasszal vár téged a folyosó végén balra!
+              A Club 11 a <strong className="text-white">Gabányi László Sportcsarnok</strong> területén található. A sportcsarnok <strong className="text-white">főbejáratán</strong> belépve fordulj <strong className="text-white">balra</strong>: az <strong className="text-white">első ajtónál</strong> találod a klubot.
             </p>
             <div className="pt-2">
               <a 

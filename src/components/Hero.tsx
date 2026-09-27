@@ -4,12 +4,15 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { Clock, Navigation, ShieldCheck, ArrowRight, Flame } from 'lucide-react';
+import { Navigation, ShieldCheck, ArrowRight, Flame, Gamepad2, Coffee } from 'lucide-react';
 import Club11Logo from './Club11Logo';
-import { OPENING_HOURS, budapestNow, MENU_ITEMS } from '../data';
+import { OPENING_HOURS, budapestNow, MENU_ITEMS, TABLE_CATEGORIES } from '../data';
 
 // A kiemelt snack neve és ára az árlistából jön, így nem térhet el tőle
 const FEATURED_SNACK = MENU_ITEMS.find(item => item.id === 'et-nachos')!;
+
+// A bisztró pillér kiemelt tételei (csak olyan, ami az árlistában is szerepel)
+const BISTRO_HIGHLIGHTS = ['Illy kávék', 'Retró melegszendvics', 'Nachos sajtszósszal', 'Csapolt sör: Dreher Gold és Pilsner'];
 
 interface HeroProps {
   onStartBooking: () => void;
@@ -87,40 +90,53 @@ export default function Hero({ onStartBooking, onExploreMenu, onOpenChat }: Hero
               </p>
             </div>
 
-            {/* Quick stats / highlights */}
-            <div className="grid grid-cols-3 gap-4 max-w-md mx-auto lg:mx-0">
-              <div className="bg-slate-900/60 backdrop-blur-sm border border-slate-800/80 rounded-xl p-3 text-center">
-                <span className="block text-2xl font-black text-emerald-400 font-mono">6x</span>
-                <span className="text-xs text-slate-400 uppercase tracking-wider font-semibold">Pool asztal</span>
+            {/* Két egyenrangú pillér: Játék és Kávézó & Bisztró */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-left" id="hero-pillars">
+              <div className="flex flex-col justify-between gap-4 p-5 rounded-2xl bg-emerald-500/10 border border-emerald-500/30" id="hero-pillar-games">
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 text-emerald-400">
+                    <Gamepad2 className="w-5 h-5" />
+                    <h2 className="text-lg font-black text-white">Játék</h2>
+                  </div>
+                  <ul className="text-sm text-slate-300 space-y-1">
+                    {TABLE_CATEGORIES.map(c => (
+                      <li key={c.type}>
+                        <span className="font-mono font-bold text-emerald-400">{c.count}×</span> {c.name.replace(' Asztal', '').replace(' Gép', '')}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                <button
+                  onClick={onStartBooking}
+                  id="hero-booking-cta"
+                  className="flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 font-bold text-sm transition-all shadow-lg shadow-emerald-500/20"
+                >
+                  Asztalfoglalás
+                  <ArrowRight className="w-4 h-4" />
+                </button>
               </div>
-              <div className="bg-slate-900/60 backdrop-blur-sm border border-slate-800/80 rounded-xl p-3 text-center">
-                <span className="block text-2xl font-black text-emerald-400 font-mono">2x</span>
-                <span className="text-xs text-slate-400 uppercase tracking-wider font-semibold">Soft Darts</span>
-              </div>
-              <div className="bg-slate-900/60 backdrop-blur-sm border border-slate-800/80 rounded-xl p-3 text-center">
-                <span className="block text-2xl font-black text-emerald-400 font-mono">2x</span>
-                <span className="text-xs text-slate-400 uppercase tracking-wider font-semibold">Csocsó</span>
-              </div>
-            </div>
 
-            {/* CTA Buttons */}
-            <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
-              <button
-                onClick={onStartBooking}
-                id="hero-booking-cta"
-                className="flex items-center justify-center gap-2 px-8 py-4 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 font-bold text-base transition-all transform hover:-translate-y-0.5 active:translate-y-0 shadow-lg shadow-emerald-500/20"
-              >
-                Online Asztalfoglalás
-                <ArrowRight className="w-5 h-5" />
-              </button>
-              
-              <button
-                onClick={onExploreMenu}
-                id="hero-menu-cta"
-                className="flex items-center justify-center gap-2 px-8 py-4 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-semibold text-base transition-all border border-slate-800"
-              >
-                Kávézó & Bár kínálatunk
-              </button>
+              <div className="flex flex-col justify-between gap-4 p-5 rounded-2xl bg-amber-500/10 border border-amber-500/30" id="hero-pillar-bistro">
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 text-amber-400">
+                    <Coffee className="w-5 h-5" />
+                    <h2 className="text-lg font-black text-white">Kávézó és bisztró</h2>
+                  </div>
+                  <ul className="text-sm text-slate-300 space-y-1">
+                    {BISTRO_HIGHLIGHTS.map(name => (
+                      <li key={name}><span className="text-amber-400">•</span> {name}</li>
+                    ))}
+                  </ul>
+                </div>
+                <button
+                  onClick={onExploreMenu}
+                  id="hero-menu-cta"
+                  className="flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-bold text-sm transition-all shadow-lg shadow-amber-500/20"
+                >
+                  Étlap és itallap
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              </div>
             </div>
 
             <div className="flex items-center gap-6 justify-center lg:justify-start text-xs text-slate-400 font-mono pt-2">
@@ -163,7 +179,7 @@ export default function Hero({ onStartBooking, onExploreMenu, onOpenChat }: Hero
                 <div className="space-y-2">
                   <h4 className="text-sm font-bold text-white uppercase tracking-wider">Miért a Club 11?</h4>
                   <p className="text-xs text-slate-400 leading-relaxed font-sans">
-                    Több mint egy egyszerű biliárdszalon. Családi vállalkozásunk célja, hogy minőségi asztalokkal, friss, zamatos olasz kávékkal és prémium italválasztékkal fűszerezze meg az itt eltöltött időt.
+                    Több mint egy biliárdszalon: családi vállalkozásként olyan helyet teremtettünk, ahol a játék mellé egy finom Illy kávé, egy retró melegszendvics vagy egy hideg csapolt sör is jár. Gyere egyedül, a barátaiddal vagy a családdal!
                   </p>
                 </div>
 
