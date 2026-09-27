@@ -6,6 +6,7 @@
 import express from "express";
 import path from "path";
 import Anthropic from "@anthropic-ai/sdk";
+import nodemailer from "nodemailer";
 import dotenv from "dotenv";
 import fs from "fs";
 import crypto from "crypto";
@@ -589,6 +590,78 @@ ${HOUSE_RULES.map((rule) => `      * ${rule}`).join("\n")}
   // ------------------------------------------------------------------
   const isValidDate = (date: unknown): date is string =>
     typeof date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(date) && !isNaN(Date.parse(date));
+  const isValidEmail = (email: string) => /^[^\s@<>,;"]+@[^\s@<>,;"]+\.[^\s@<>,;"]+$/.test(email);
+
+  // ------------------------------------------------------------------
+  // FOGLALÁSI E-MAILEK
+  // Beállítás környezeti változókkal (pl. Gmail esetén alkalmazásjelszóval):
+  //   SMTP_USER=club11buda@gmail.com   SMTP_PASS=<16 jegyű alkalmazásjelszó>
+  //   (nem kötelező: SMTP_HOST, SMTP_PORT, SMTP_SECURE, BOOKING_NOTIFY_EMAIL)
+  // Ha nincs beállítva, a foglalás ugyanúgy mentődik, csak e-mail nem megy ki.
+  // ------------------------------------------------------------------
+  const smtpPort = Number(process.env.SMTP_PORT) || 465;
+  const mailTransport = process.env.SMTP_USER && process.env.SMTP_PASS
+    ? nodemailer.createTransport({
+        host: process.env.SMTP_HOST || "smtp.gmail.com",
+        port: smtpPort,
+        secure: (process.env.SMTP_SECURE ?? String(smtpPort === 465)) === "true",
+        auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
+      })
+    : null;
+  const notifyEmail = process.env.BOOKING_NOTIFY_EMAIL || CLUB_EMAIL;
+  if (!mailTransport) {
+    console.warn("SMTP_USER / SMTP_PASS nincs beállítva: a foglalásokról nem megy ki e-mail.");
+  }
+
+  function bookingSummaryText(group: Booking[]) {
+    const first = group[0];
+    const total = group.reduce((sum, b) => sum + b.totalPrice, 0);
+    const lines = [
+      `Dátum: ${first.date} (${DAY_NAMES[dayOfWeek(first.date)].toLowerCase()})`,
+      ...group.map((b) => `  • ${b.typeName}: ${b.timeSlot}${b.totalPrice > 0 ? ` – ${formatPrice(b.totalPrice)}` : " – díjmentes, a fogyasztás kötelező"}`),
+      `Létszám: ${first.partySize} fő`,
+      `Név: ${first.name}`,
+      `E-mail: ${first.email}`,
+      `Telefon: ${first.phone}`,
+    ];
+    if (first.note) lines.push(`Megjegyzés, kérés: ${first.note}`);
+    lines.push(`Várható fizetendő: ${total > 0 ? formatPrice(total) : "díjmentes (a fogyasztás kötelező)"}`);
+    return lines.join("\n");
+  }
+
+  // Két e-mail: értesítés a klubnak és visszaigazolás a vendégnek. Hiba esetén a foglalás megmarad.
+  async function sendBookingEmails(group: Booking[]): Promise<boolean> {
+    if (!mailTransport || group.length === 0) return false;
+    const first = group[0];
+    const from = process.env.MAIL_FROM || `"Club 11 Újbuda" <${process.env.SMTP_USER}>`;
+    const summary = bookingSummaryText(group);
+    try {
+      await mailTransport.sendMail({
+        from,
+        to: notifyEmail,
+        replyTo: first.email,
+        subject: `Új foglalási igény – ${first.date} – ${first.name}`,
+        text: `Új foglalási igény érkezett a weboldalról.\n\n${summary}\n\nA vendégnek erre az e-mailre válaszolva tudsz visszaigazolást küldeni.`,
+      });
+      await mailTransport.sendMail({
+        from,
+        to: first.email,
+        replyTo: notifyEmail,
+        subject: "Club 11 – megkaptuk a foglalási igényedet",
+        text:
+          `Kedves ${first.name}!\n\nKöszönjük, megkaptuk a foglalási igényedet:\n\n${summary}\n\n` +
+          `FONTOS: a foglalás akkor érvényes, ha visszaigazolást kapsz róla.\n` +
+          `Az asztalt érkezéskor a személyzet jelöli ki.\n\n` +
+          `Kérdés esetén hívj minket: +36 70 621 4181, vagy válaszolj erre az e-mailre.\n\n` +
+          `Club 11 Újbuda\n1116 Budapest, Hauszmann Alajos u. 5. (Gabányi László Sportcsarnok)`,
+      });
+      console.log(`[E-MAIL] Foglalási értesítő elküldve: ${notifyEmail} és ${first.email}`);
+      return true;
+    } catch (err: any) {
+      console.error("[E-MAIL] Nem sikerült elküldeni a foglalási e-mailt:", err?.message || err);
+      return false;
+    }
+  }
 
   // Szabad helyek száma idősávonként és típusonként egy adott napra
   app.get("/api/bookings/availability", (req, res) => {
@@ -600,14 +673,26 @@ ${HOUSE_RULES.map((rule) => `      * ${rule}`).join("\n")}
     res.json({ date, closed: slots.length === 0, slots, availability });
   });
 
-  app.post("/api/bookings", (req, res) => {
-    try {
-      const { type, date, timeSlots, name, email, phone, partySize, note } = req.body || {};
+  // Túl sok foglalás ugyanarról a címről (a foglaló e-mailt is küld, így ez a visszaélést is fékezi)
+  const BOOKING_WINDOW_MS = 60 * 60 * 1000;
+  const BOOKING_MAX_PER_WINDOW = 10;
+  const bookingAttempts = new Map<string, number[]>();
 
-      const category = TABLE_CATEGORIES.find((c) => c.type === type);
-      if (!category) {
-        return res.status(400).json({ error: "Kérlek válaszd ki a játék típusát!" });
+  // Egy foglalás több tételből állhat: pl. pool 18-20 és leülős asztal 18-21, ugyanarra a napra.
+  // Minden tételt együtt ellenőrzünk: ha bármelyik nem foglalható, semmi sem mentődik el.
+  app.post("/api/bookings", async (req, res) => {
+    try {
+      const ipKey = req.ip || "unknown";
+      const now = Date.now();
+      const recent = (bookingAttempts.get(ipKey) || []).filter((t) => now - t < BOOKING_WINDOW_MS);
+      if (recent.length >= BOOKING_MAX_PER_WINDOW) {
+        return res.status(429).json({ error: "Túl sok foglalási kísérlet. Kérlek próbáld újra később, vagy hívj minket telefonon!" });
       }
+      recent.push(now);
+      bookingAttempts.set(ipKey, recent);
+
+      const { items, date, name, email, phone, partySize, note } = req.body || {};
+
       if (!isValidDate(date)) {
         return res.status(400).json({ error: "Kérlek válassz egy érvényes dátumot!" });
       }
@@ -615,21 +700,36 @@ ${HOUSE_RULES.map((rule) => `      * ${rule}`).join("\n")}
       if (openSlots.length === 0) {
         return res.status(400).json({ error: "Ezen a napon zárva vagyunk, nem lehet foglalni." });
       }
-      if (
-        !Array.isArray(timeSlots) || timeSlots.length === 0 ||
-        new Set(timeSlots).size !== timeSlots.length ||
-        timeSlots.some((slot) => typeof slot !== "string" || !openSlots.includes(slot))
-      ) {
-        return res.status(400).json({ error: "A kiválasztott idősáv nyitvatartási időn kívül esik." });
+      if (!Array.isArray(items) || items.length === 0 || items.length > TABLE_CATEGORIES.length) {
+        return res.status(400).json({ error: "Kérlek válassz ki legalább egy játékot vagy asztalt és idősávot!" });
       }
-      if (timeSlots.some((slot: string) => isSlotInPast(date, slot))) {
-        return res.status(400).json({ error: "Már elkezdődött vagy elmúlt idősávra nem lehet foglalni." });
+      const seenTypes = new Set<string>();
+      const parsedItems: { category: (typeof TABLE_CATEGORIES)[number]; slots: string[] }[] = [];
+      for (const item of items) {
+        const category = TABLE_CATEGORIES.find((c) => c.type === item?.type);
+        if (!category || seenTypes.has(category.type)) {
+          return res.status(400).json({ error: "Érvénytelen foglalási tétel." });
+        }
+        seenTypes.add(category.type);
+        const timeSlots = item.timeSlots;
+        if (
+          !Array.isArray(timeSlots) || timeSlots.length === 0 ||
+          new Set(timeSlots).size !== timeSlots.length ||
+          timeSlots.some((slot: unknown) => typeof slot !== "string" || !openSlots.includes(slot))
+        ) {
+          return res.status(400).json({ error: `${category.name}: a kiválasztott idősáv nyitvatartási időn kívül esik.` });
+        }
+        if (timeSlots.some((slot: string) => isSlotInPast(date, slot))) {
+          return res.status(400).json({ error: "Már elkezdődött vagy elmúlt idősávra nem lehet foglalni." });
+        }
+        parsedItems.push({ category, slots: openSlots.filter((slot) => timeSlots.includes(slot)) });
       }
+
       const cleanName = typeof name === "string" ? name.trim().slice(0, 100) : "";
       const cleanEmail = typeof email === "string" ? email.trim().slice(0, 200) : "";
       const cleanPhone = typeof phone === "string" ? phone.trim().slice(0, 40) : "";
-      if (!cleanName || !cleanEmail.includes("@") || !cleanPhone) {
-        return res.status(400).json({ error: "Kérlek add meg a nevedet, e-mail címedet és telefonszámodat!" });
+      if (!cleanName || !isValidEmail(cleanEmail) || !cleanPhone) {
+        return res.status(400).json({ error: "Kérlek add meg a nevedet, egy érvényes e-mail címet és a telefonszámodat!" });
       }
       const people = Number(partySize);
       if (!Number.isInteger(people) || people < 1) {
@@ -643,23 +743,26 @@ ${HOUSE_RULES.map((rule) => `      * ${rule}`).join("\n")}
       const cleanNote = typeof note === "string" ? note.trim().slice(0, 500) : "";
 
       const bookings = readBookings();
-      const fullSlots = timeSlots.filter((slot: string) => countBooked(bookings, category.type, date, slot) >= category.count);
-      if (fullSlots.length > 0) {
-        return res.status(409).json({
-          error: `Sajnáljuk, ebben az idősávban már minden ${category.name.toLowerCase()} foglalt: ${fullSlots.join(", ")}. Kérlek válassz másik időpontot!`,
-        });
+      for (const { category, slots } of parsedItems) {
+        const fullSlots = slots.filter((slot) => countBooked(bookings, category.type, date, slot) >= category.count);
+        if (fullSlots.length > 0) {
+          return res.status(409).json({
+            error: `Sajnáljuk, ebben az idősávban már minden ${category.name.toLowerCase()} foglalt: ${fullSlots.join(", ")}. Kérlek válassz másik időpontot!`,
+          });
+        }
       }
 
-      const sortedSlots = openSlots.filter((slot) => timeSlots.includes(slot));
-      const booking: Booking = {
+      const groupId = `grp-${Date.now()}-${crypto.randomBytes(3).toString("hex")}`;
+      const created: Booking[] = parsedItems.map(({ category, slots }) => ({
         id: `book-${Date.now()}-${crypto.randomBytes(3).toString("hex")}`,
+        groupId,
         type: category.type,
         typeName: category.name,
         date,
-        timeSlots: sortedSlots,
-        timeSlot: formatSlotsSummary(sortedSlots),
-        durationHours: sortedSlots.length,
-        totalPrice: sortedSlots.length * category.hourlyRate,
+        timeSlots: slots,
+        timeSlot: formatSlotsSummary(slots),
+        durationHours: slots.length,
+        totalPrice: slots.length * category.hourlyRate,
         partySize: people,
         ...(cleanNote ? { note: cleanNote } : {}),
         name: cleanName,
@@ -667,19 +770,18 @@ ${HOUSE_RULES.map((rule) => `      * ${rule}`).join("\n")}
         phone: cleanPhone,
         createdAt: new Date().toISOString(),
         cancelToken: crypto.randomBytes(16).toString("hex"),
-      };
-      bookings.push(booking);
+      }));
+      bookings.push(...created);
       writeBookings(bookings);
 
-      // E-mail küldés még nincs bekötve, egyelőre csak a szerver naplójába kerül.
       console.log(`==================================================`);
-      console.log(`[ÚJ FOGLALÁS] ${booking.typeName} – ${booking.date} ${booking.timeSlot}`);
-      console.log(`Vendég: ${booking.name} | ${booking.email} | ${booking.phone} | ${booking.partySize} fő`);
-      if (booking.note) console.log(`Megjegyzés, kérés: ${booking.note}`);
-      console.log(`Várható díj: ${booking.totalPrice > 0 ? `${booking.totalPrice} Ft` : "díjmentes (fogyasztás kötelező)"}`);
+      console.log(`[ÚJ FOGLALÁS] ${date} – ${cleanName} | ${cleanEmail} | ${cleanPhone} | ${people} fő`);
+      for (const b of created) console.log(`  • ${b.typeName}: ${b.timeSlot}`);
+      if (cleanNote) console.log(`Megjegyzés, kérés: ${cleanNote}`);
       console.log(`==================================================`);
 
-      res.json(booking);
+      const emailSent = await sendBookingEmails(created);
+      res.json({ bookings: created, emailSent });
     } catch (err: any) {
       console.error("Hiba a foglalás mentése során:", err);
       res.status(500).json({ error: "Szerverhiba történt a foglalás mentése során." });
