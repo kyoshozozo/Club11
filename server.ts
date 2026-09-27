@@ -26,6 +26,9 @@ import {
   CHAT_LIMIT_MESSAGE,
   HOUSE_RULES,
   BOOKING_INFO,
+  GAME_CATEGORIES,
+  MAX_ONLINE_PARTY_SIZE,
+  CLUB_EMAIL,
 } from "./src/data";
 import type { Booking, TableType } from "./src/types";
 
@@ -107,7 +110,9 @@ async function startServer() {
     .map((day) => `      * ${DAY_NAMES[day]}: ${formatDayHours(OPENING_HOURS[day])}`)
     .join("\n");
   const TABLES_TEXT = TABLE_CATEGORIES
-    .map((c) => `      * ${c.name}: ${c.count} db, ${formatPrice(c.hourlyRate)}/óra`)
+    .map((c) => c.hourlyRate > 0
+      ? `      * ${c.name}: ${c.count} db, ${formatPrice(c.hourlyRate)}/óra`
+      : `      * ${c.name}: ${c.count} db, díjmentesen foglalható (a fogyasztás kötelező)`)
     .join("\n");
   const menuText = (category: "etlap" | "itallap") =>
     MENU_ITEMS.filter((item) => item.category === category)
@@ -249,6 +254,7 @@ ${HOUSE_RULES.map((rule) => `      * ${rule}`).join("\n")}
     let type: TableType | null = null;
     if (words.some((w) => w.startsWith("darts"))) type = "darts";
     else if (words.some((w) => w.startsWith("csocs"))) type = "foosball";
+    else if (words.some((w) => w.startsWith("leül") || w.startsWith("ülő") || w.startsWith("ülhet"))) type = "seating";
     else if (words.some((w) => w.startsWith("biliárd") || w.startsWith("pool"))) type = "pool";
 
     const has = (...stems: string[]) => words.some((w) => stems.some((s) => w.startsWith(s)));
@@ -301,7 +307,7 @@ ${HOUSE_RULES.map((rule) => `      * ${rule}`).join("\n")}
       return `Nyitvatartásunk: ${hours}. Beugrasz?`;
     }
     if (q.words.some((w) => ["ár", "ára", "árak", "árat", "áron", "árai", "áruk"].includes(w)) || q.has("mennyi", "óradíj", "díj", "kerül")) {
-      const rates = TABLE_CATEGORIES.map((c) => `${c.name.toLowerCase()} ${formatPrice(c.hourlyRate)}/óra`).join(", ");
+      const rates = GAME_CATEGORIES.map((c) => `${c.name.toLowerCase()} ${formatPrice(c.hourlyRate)}/óra`).join(", ");
       return `Óradíjaink: ${rates}. Az ételek és italok árait az étlapunkon találod – nézd meg étlapunkat a weboldalon!`;
     }
     if (q.has("kaja", "étel", "enni", "eszik", "ennék", "szendvics", "nachos", "étlap", "ital", "inni", "sör", "kávé", "innék")) {
@@ -596,7 +602,7 @@ ${HOUSE_RULES.map((rule) => `      * ${rule}`).join("\n")}
 
   app.post("/api/bookings", (req, res) => {
     try {
-      const { type, date, timeSlots, name, email, phone } = req.body || {};
+      const { type, date, timeSlots, name, email, phone, partySize, note } = req.body || {};
 
       const category = TABLE_CATEGORIES.find((c) => c.type === type);
       if (!category) {
@@ -625,6 +631,16 @@ ${HOUSE_RULES.map((rule) => `      * ${rule}`).join("\n")}
       if (!cleanName || !cleanEmail.includes("@") || !cleanPhone) {
         return res.status(400).json({ error: "Kérlek add meg a nevedet, e-mail címedet és telefonszámodat!" });
       }
+      const people = Number(partySize);
+      if (!Number.isInteger(people) || people < 1) {
+        return res.status(400).json({ error: "Kérlek add meg, hány fő érkezik!" });
+      }
+      if (people > MAX_ONLINE_PARTY_SIZE) {
+        return res.status(400).json({
+          error: `${MAX_ONLINE_PARTY_SIZE} fő felett csak e-mailes foglalást fogadunk el. Kérlek írj nekünk: ${CLUB_EMAIL}`,
+        });
+      }
+      const cleanNote = typeof note === "string" ? note.trim().slice(0, 500) : "";
 
       const bookings = readBookings();
       const fullSlots = timeSlots.filter((slot: string) => countBooked(bookings, category.type, date, slot) >= category.count);
@@ -644,6 +660,8 @@ ${HOUSE_RULES.map((rule) => `      * ${rule}`).join("\n")}
         timeSlot: formatSlotsSummary(sortedSlots),
         durationHours: sortedSlots.length,
         totalPrice: sortedSlots.length * category.hourlyRate,
+        partySize: people,
+        ...(cleanNote ? { note: cleanNote } : {}),
         name: cleanName,
         email: cleanEmail,
         phone: cleanPhone,
@@ -656,8 +674,9 @@ ${HOUSE_RULES.map((rule) => `      * ${rule}`).join("\n")}
       // E-mail küldés még nincs bekötve, egyelőre csak a szerver naplójába kerül.
       console.log(`==================================================`);
       console.log(`[ÚJ FOGLALÁS] ${booking.typeName} – ${booking.date} ${booking.timeSlot}`);
-      console.log(`Vendég: ${booking.name} | ${booking.email} | ${booking.phone}`);
-      console.log(`Várható díj: ${booking.totalPrice} Ft`);
+      console.log(`Vendég: ${booking.name} | ${booking.email} | ${booking.phone} | ${booking.partySize} fő`);
+      if (booking.note) console.log(`Megjegyzés, kérés: ${booking.note}`);
+      console.log(`Várható díj: ${booking.totalPrice > 0 ? `${booking.totalPrice} Ft` : "díjmentes (fogyasztás kötelező)"}`);
       console.log(`==================================================`);
 
       res.json(booking);
