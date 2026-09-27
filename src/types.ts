@@ -16,6 +16,7 @@ export interface TableCategory {
 
 export interface Booking {
   id: string;
+  groupId?: string; // az egyszerre leadott tételek közös azonosítója
   type: TableType;
   typeName: string;
   date: string; // YYYY-MM-DD
