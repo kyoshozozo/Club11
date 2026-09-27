@@ -24,6 +24,8 @@ import {
   slotStartHour,
   MAX_CHAT_QUESTIONS,
   CHAT_LIMIT_MESSAGE,
+  HOUSE_RULES,
+  BOOKING_INFO,
 } from "./src/data";
 import type { Booking, TableType } from "./src/types";
 
@@ -131,6 +133,10 @@ ${menuText("etlap")}
     - Árlista – Itallap:
 ${menuText("itallap")}
     - Az italokra +50 Ft DRS (visszaváltási díj) jön. Melegétel mindennap 20:00-ig rendelhető.
+    - Házirend és foglalási tudnivalók (ha szóba kerül, ezeket pontosan így mondd el):
+      * ${BOOKING_INFO}
+${HOUSE_RULES.map((rule) => `      * ${rule}`).join("\n")}
+      * Környezetünk és programjaink elsősorban felnőtt vendégeink igényeihez igazodnak.
 
     A VISELKEDÉSEDRE VONATKOZÓ SZABÁLYOK:
     1. Mindig magyarul válaszolj, kedves, laza, közvetlen, tegeződő hangnemben (mint egy igazi csapos a törzsvendégeivel).
