@@ -35,12 +35,12 @@ export const getTableCategory = (type: TableType) => TABLE_CATEGORIES.find(c => 
 // Nyitvatartás a hét napjai szerint (index = Date.getDay(), 0 = vasárnap)
 export const OPENING_HOURS: DayHours[] = [
   null,                    // Vasárnap
-  { open: 14, close: 22 }, // Hétfő
+  { open: 14, close: 21 }, // Hétfő
   { open: 14, close: 22 }, // Kedd
   { open: 14, close: 22 }, // Szerda
-  { open: 14, close: 23 }, // Csütörtök
+  { open: 14, close: 22 }, // Csütörtök
   { open: 14, close: 23 }, // Péntek
-  { open: 14, close: 22 }, // Szombat
+  { open: 14, close: 23 }, // Szombat
 ];
 
 export const DAY_NAMES = ['Vasárnap', 'Hétfő', 'Kedd', 'Szerda', 'Csütörtök', 'Péntek', 'Szombat'];
@@ -113,17 +113,17 @@ export function formatSlotsSummary(slots: string[]): string {
 
 export const MENU_ITEMS: MenuItem[] = [
   // Ételek & Rágcsálnivalók (Étlap)
-  { id: 'et-lepeny', name: 'Lepény', category: 'etlap', price: 2590, description: 'Frissen sült, laktató és ízletes lepény.' },
+  { id: 'et-lepeny', name: 'Lepény', category: 'etlap', price: 2590, description: 'Frissen sült, laktató lepény többféle ízben.' },
   { id: 'et-retro-melegszendvics', name: 'Retró melegszendvics', category: 'etlap', price: 1990, description: 'Klasszikus retró melegszendvics gazdag feltéttel, ropogósra sütve.', isPopular: true },
   { id: 'et-hotdog', name: 'Hot-dog', category: 'etlap', price: 1300, description: 'Forró virsli puha kifliben, mustárral, ketchuppal és majonézzel.' },
   { id: 'et-burrito', name: 'Burrito', category: 'etlap', price: 1300, description: 'Ízletes, mexikói stílusú burrito dús töltelékkel.' },
-  { id: 'et-melegszendvics', name: 'Melegszendvics', category: 'etlap', price: 650, description: 'Ropogós, meleg szendvics ínycsiklandó feltétekkel.' },
-  { id: 'et-nachos', name: 'Nachos + szósz', category: 'etlap', price: 1850, description: 'Ropogós tortilla chips finom mártogatóssal.', isPopular: true },
+  { id: 'et-melegszendvics', name: 'Melegszendvics', category: 'etlap', price: 650, description: 'Ropogós, meleg szendvics.' },
+  { id: 'et-nachos', name: 'Nachos + szósz', category: 'etlap', price: 1850, description: 'Ropogós tortilla chips sajtszósszal.', isPopular: true },
   { id: 'et-chipsek', name: 'Chipsek', category: 'etlap', price: '700 - 1200', description: 'Válogatott, ropogós sós és ízesített chipsek.' },
   { id: 'et-sajtos-taller', name: 'Sajtos tallér', category: 'etlap', price: 800, description: 'Hagyományos, ropogós sajtos tallérok.' },
   { id: 'et-crocko', name: 'Crocko krékerek', category: 'etlap', price: '650 - 1200', description: 'Kellemesen sós Crocko krékerek rágcsáláshoz.' },
   { id: 'et-ropi', name: 'Ropi', category: 'etlap', price: 350, description: 'Klasszikus sós pálcikák játék mellé.' },
-  { id: 'et-csokik', name: 'Csokik', category: 'etlap', price: 550, description: 'Különböző finom csokoládék az édesszájúaknak.' },
+  { id: 'et-csokik', name: 'Csokik', category: 'etlap', price: '500 - 600', description: 'Különböző finom csokoládék az édesszájúaknak.' },
   { id: 'et-mogyi', name: 'Mogyi termékek', category: 'etlap', price: '600 - 1100', description: 'Mogyoró, kesudió és egyéb prémium Mogyi rágcsálnivalók.' },
 
   // Italok (Itallap)
@@ -131,15 +131,15 @@ export const MENU_ITEMS: MenuItem[] = [
   { id: 'it-viz', name: 'Víz', category: 'itallap', price: '350 - 650', description: 'Csendes és szénsavas ásványvizek.' },
   { id: 'it-powerrade', name: 'Powerrade', category: 'itallap', price: 900, description: 'Izotóniás sportital a maximális fókuszért és energiáért.' },
   { id: 'it-energiaitalok', name: 'Energiaitalok', category: 'itallap', price: '550 - 900', description: 'Különböző prémium energiaitalok pörgetéshez.' },
-  { id: 'it-limonade', name: 'Limonádé', category: 'itallap', price: '700 - 1450', description: 'Frissen készített, hűsítő limonádék gyümölcsökkel.', isPopular: true },
-  { id: 'it-csapolt-sor', name: 'Csapolt sör', category: 'itallap', price: '1150 - 1400', description: 'Friss, jéghideg csapolt sörök különféle kiszerelésben.', isPopular: true },
-  { id: 'it-uveges-sor', name: 'Üveges sörök', category: 'itallap', price: '1050 - 1700', description: 'Prémium minőségű palackozott sörkülönlegességek.' },
-  { id: 'it-dobozos-sor', name: 'Dobozos sörök', category: 'itallap', price: '950 - 1900', description: 'Kényelmes dobozos sörök széles választéka.' },
+  { id: 'it-limonade', name: 'Limonádé', category: 'itallap', price: '700 - 1450', description: 'Frissen készített, hűsítő limonádék különböző ízesítésekben.', isPopular: true },
+  { id: 'it-csapolt-sor', name: 'Csapolt sör', category: 'itallap', price: '1150 - 1400', description: 'Friss, jéghideg csapolt sörök: Dreher Gold és Pilsner.', isPopular: true },
+  { id: 'it-uveges-sor', name: 'Üveges sörök', category: 'itallap', price: '1050 - 1700', description: 'Prémium minőségű palackozott sörök.' },
+  { id: 'it-dobozos-sor', name: 'Dobozos sörök', category: 'itallap', price: '950 - 1900', description: 'Dobozos sörök széles választéka.' },
   { id: 'it-sommersby', name: 'Sommersby', category: 'itallap', price: 1000, description: 'Könnyed, édeskés, gyümölcsös almabor.' },
-  { id: 'it-bor', name: 'Bor / dl', category: 'itallap', price: '550 - 1100', description: 'Kiváló minőségű fehér, vörös és rosé borok deciliterenként.' },
-  { id: 'it-cseles', name: 'Cseles', category: 'itallap', price: 1500, description: 'Különleges, fűszeres alkoholos italválaszték.' },
-  { id: 'it-rovidek', name: 'Rövidek', category: 'itallap', price: '1200 - 1550', description: 'Kiváló minőségű röviditalok és párlatok.' },
-  { id: 'it-kavek', name: 'Kávék', category: 'itallap', price: '600 - 1250', description: 'Frissen főzött olasz kávékülönlegességek és tejes kávéitalok.' },
+  { id: 'it-bor', name: 'Bor', category: 'itallap', price: '550 - 1100', description: 'Rosé és fehér borok kimérve.' },
+  { id: 'it-cseles', name: 'Cseles', category: 'itallap', price: 1500, description: 'Különleges, fűszeres alkoholos koktél.' },
+  { id: 'it-rovidek', name: 'Rövidek', category: 'itallap', price: '1200 - 1550', description: 'Rövid italok.' },
+  { id: 'it-kavek', name: 'Kávék', category: 'itallap', price: '600 - 1250', description: 'Frissen főzött Illy kávék és tejes kávéitalok.' },
   { id: 'it-tea-mezzel', name: 'Tea mézzel', category: 'itallap', price: 750, description: 'Melegítő, zamatos tea minőségi mézzel ízesítve.' },
 ];
 

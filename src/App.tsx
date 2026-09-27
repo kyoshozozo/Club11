@@ -13,7 +13,7 @@ import About from './components/About';
 import Gallery from './components/Gallery';
 import AiChatbot from './components/AiChatbot';
 import Club11Logo from './components/Club11Logo';
-import { Layers, Clock, Coffee, BookOpen, MapPin, MessageSquare, Facebook, Phone, Heart } from 'lucide-react';
+import { Coffee, Gamepad2, Sun, MapPin, MessageSquare, Facebook, Phone, Heart } from 'lucide-react';
 
 export default function App() {
   const [activeSection, setActiveSection] = useState<string>('home');
@@ -69,54 +69,54 @@ export default function App() {
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 
-                {/* Feature 1 */}
-                <div 
-                  className="p-6 rounded-2xl bg-slate-900 border border-slate-800 hover:border-slate-700 transition-all cursor-pointer group"
+                {/* Feature 1: Kávézó és Bisztró */}
+                <div
+                  className="p-6 rounded-2xl bg-slate-900 border border-slate-800 hover:border-amber-500/40 transition-all cursor-pointer group"
+                  onClick={() => navigate('menu')}
+                  id="feature-card-bar"
+                >
+                  <div className="w-12 h-12 rounded-xl bg-amber-500/10 text-amber-400 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
+                    <Coffee className="w-6 h-6" />
+                  </div>
+                  <h3 className="text-lg font-bold text-white mb-2 group-hover:text-amber-400 transition-colors">Kávézó és Bisztró</h3>
+                  <p className="text-xs text-slate-400 leading-relaxed">
+                    Illy kávék, jéghideg csapolt és üveges sörök, hűsítő házi limonádék. Retró melegszendvicsünk legendás!
+                  </p>
+                  <span className="inline-flex items-center gap-1.5 text-xs text-amber-400 font-bold font-mono pt-4">
+                    Étlap és itallap &rarr;
+                  </span>
+                </div>
+
+                {/* Feature 2: Biliárd, darts, csocsó */}
+                <div
+                  className="p-6 rounded-2xl bg-slate-900 border border-slate-800 hover:border-emerald-500/40 transition-all cursor-pointer group"
                   onClick={() => navigate('booking')}
                   id="feature-card-biliard"
                 >
                   <div className="w-12 h-12 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
-                    <Clock className="w-6 h-6" />
+                    <Gamepad2 className="w-6 h-6" />
                   </div>
-                  <h3 className="text-lg font-bold text-white mb-2 group-hover:text-emerald-400 transition-colors">Professzionális Biliárd</h3>
+                  <h3 className="text-lg font-bold text-white mb-2 group-hover:text-emerald-400 transition-colors">Biliárd, darts, csocsó</h3>
                   <p className="text-xs text-slate-400 leading-relaxed">
-                    9 lábas professzionális pool biliárd asztalok várják a precíz lökések kedvelőit, mellettük soft darts gépek és csocsó asztalok.
+                    Játssz nálunk hat versenyméretű pool biliárdasztalon, két soft darts gépen vagy két csocsóasztalon. Asztalt online vagy telefonon is foglalhatsz.
                   </p>
                   <span className="inline-flex items-center gap-1.5 text-xs text-emerald-400 font-bold font-mono pt-4">
                     Asztalfoglalás indítása &rarr;
                   </span>
                 </div>
 
-                {/* Feature 2 */}
-                <div 
-                  className="p-6 rounded-2xl bg-slate-900 border border-slate-800 hover:border-slate-700 transition-all cursor-pointer group"
-                  onClick={() => navigate('menu')}
-                  id="feature-card-bar"
-                >
-                  <div className="w-12 h-12 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
-                    <Coffee className="w-6 h-6" />
-                  </div>
-                  <h3 className="text-lg font-bold text-white mb-2 group-hover:text-emerald-400 transition-colors">Kávézó és Bár</h3>
-                  <p className="text-xs text-slate-400 leading-relaxed">
-                    Frissen pörkölt olasz arabica kávék, jéghideg csapolt sörök, válogatott kézműves IPA-k és hűsítő házi limonádék. Ropogós melegszendvicsünk legendás!
-                  </p>
-                  <span className="inline-flex items-center gap-1.5 text-xs text-emerald-400 font-bold font-mono pt-4">
-                    Itallap böngészése &rarr;
-                  </span>
-                </div>
-
-                {/* Feature 3 */}
-                <div 
+                {/* Feature 3: Terasz és közösség */}
+                <div
                   className="p-6 rounded-2xl bg-slate-900 border border-slate-800 hover:border-slate-700 transition-all cursor-pointer group"
                   onClick={() => navigate('posts')}
                   id="feature-card-events"
                 >
                   <div className="w-12 h-12 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
-                    <BookOpen className="w-6 h-6" />
+                    <Sun className="w-6 h-6" />
                   </div>
-                  <h3 className="text-lg font-bold text-white mb-2 group-hover:text-emerald-400 transition-colors">Közösség és Versenyek</h3>
+                  <h3 className="text-lg font-bold text-white mb-2 group-hover:text-emerald-400 transition-colors">Terasz és közösség</h3>
                   <p className="text-xs text-slate-400 leading-relaxed">
-                    Rendszeresen szervezünk amatőr pool biliárd háziversenyeket, sport közvetítéseket óriás kivetítőn, és darts kihívásokat. Csatlakozz te is a Club 11-hez!
+                    Nyáron hangulatos, zárt terasszal és hűsölési lehetőséggel várjuk vendégeinket. Nálunk a baráti társaságok, a családok és a munkatársak is otthon érzik magukat. Egy kávé, egy jó beszélgetés vagy egy baráti biliárdparti mindig belefér!
                   </p>
                   <span className="inline-flex items-center gap-1.5 text-xs text-emerald-400 font-bold font-mono pt-4">
                     Friss hírek olvasása &rarr;
@@ -183,7 +183,7 @@ export default function App() {
                   <button onClick={() => navigate('booking')} className="hover:text-emerald-400 transition-colors">Interaktív Asztalfoglalás</button>
                 </li>
                 <li>
-                  <button onClick={() => navigate('menu')} className="hover:text-emerald-400 transition-colors">Bár és Kávézó</button>
+                  <button onClick={() => navigate('menu')} className="hover:text-emerald-400 transition-colors">Kávézó és Bisztró</button>
                 </li>
                 <li>
                   <button onClick={() => navigate('gallery')} className="hover:text-emerald-400 transition-colors">Galéria</button>
