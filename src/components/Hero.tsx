@@ -6,10 +6,7 @@
 import React, { useState, useEffect } from 'react';
 import { Navigation, ShieldCheck, ArrowRight, Flame, Gamepad2, Coffee } from 'lucide-react';
 import Club11Logo from './Club11Logo';
-import { OPENING_HOURS, budapestNow, MENU_ITEMS, TABLE_CATEGORIES } from '../data';
-
-// A kiemelt snack neve és ára az árlistából jön, így nem térhet el tőle
-const FEATURED_SNACK = MENU_ITEMS.find(item => item.id === 'et-nachos')!;
+import { OPENING_HOURS, budapestNow, TABLE_CATEGORIES } from '../data';
 
 // A bisztró pillér kiemelt tételei (csak olyan, ami az árlistában is szerepel)
 const BISTRO_HIGHLIGHTS = ['Illy kávék', 'Retró melegszendvics', 'Nachos sajtszósszal', 'Csapolt sör: Dreher Gold és Pilsner'];
@@ -177,32 +174,14 @@ export default function Hero({ onStartBooking, onExploreMenu, onOpenChat }: Hero
               {/* Card content list */}
               <div className="p-6 space-y-5 bg-gradient-to-b from-slate-900 to-slate-950">
                 <div className="space-y-2">
-                  <h4 className="text-sm font-bold text-white uppercase tracking-wider">Miért a Club 11?</h4>
-                  <div className="text-xs text-slate-400 leading-relaxed font-sans space-y-2">
+                  <h4 className="text-sm font-bold text-emerald-400 uppercase tracking-wider">Miért a Club 11?</h4>
+                  {/* Ugyanaz a betűméret és stílus, mint a "Kávézó és bisztró" dobozban */}
+                  <div className="text-sm text-slate-300 leading-relaxed font-sans space-y-2">
                     <p>A Sport bisztró, melyet a családommal hoztunk létre, egy gyermekkori emlék megvalósulása.</p>
                     <p>Régen több olyan közösségteremtő létesítmény volt, mint amilyen mi is szeretnénk lenni. Mára a club szót teljesen mással azonosítják; szeretnénk, ha a 21. századra módosult értelem nem vezetne félre senkit.</p>
                     <p>Egy olyan helyet biztosítunk, amilyenben én annak idején felnőttem: ahol nyugodtan le lehet ülni kártyázni, csocsózni vagy beszélgetni egy sör mellett a haverokkal. Ahol bárkihez odamehetsz, ha nincs kivel dartsozni, és nem fognak kinézni.</p>
                     <p>Biliárdra is van lehetőség az óriási közös térben, amit igény esetén szeparálni is tudunk.</p>
-                    <p className="text-slate-300 font-semibold">Egy igazi klubélményt szeretnénk adni a betérők számára.</p>
-                  </div>
-                </div>
-
-                <div className="border-t border-slate-800/80 pt-4 space-y-3 text-xs font-mono">
-                  <div className="flex justify-between items-center text-slate-300">
-                    <span className="text-slate-500">Pool Biliárd</span>
-                    <span className="text-emerald-400 font-bold">6 asztal</span>
-                  </div>
-                  <div className="flex justify-between items-center text-slate-300">
-                    <span className="text-slate-500">Soft Darts</span>
-                    <span className="text-emerald-400 font-bold">2 gép</span>
-                  </div>
-                  <div className="flex justify-between items-center text-slate-300">
-                    <span className="text-slate-500">Csocsó</span>
-                    <span className="text-emerald-400 font-bold">2 asztal</span>
-                  </div>
-                  <div className="flex justify-between items-center text-slate-300">
-                    <span className="text-slate-500">{FEATURED_SNACK.name}</span>
-                    <span className="text-emerald-400 font-bold">{FEATURED_SNACK.price.toLocaleString('hu-HU')} Ft</span>
+                    <p>Egy igazi klubélményt szeretnénk adni a betérők számára.</p>
                   </div>
                 </div>
 
