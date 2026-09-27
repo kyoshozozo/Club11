@@ -299,7 +299,7 @@ ${menuText("itallap")}
       return `Óradíjaink: ${rates}. Az ételek és italok árait az étlapunkon találod – nézd meg étlapunkat a weboldalon!`;
     }
     if (q.has("kaja", "étel", "enni", "eszik", "ennék", "szendvics", "nachos", "étlap", "ital", "inni", "sör", "kávé", "innék")) {
-      return "Nézd meg étlapunkat a weboldalon (Kávézó & Bár menüpont), ott megtalálod a teljes kínálatot árakkal együtt!";
+      return "Nézd meg étlapunkat a weboldalon (Kávézó & Bisztró menüpont), ott megtalálod a teljes kínálatot árakkal együtt!";
     }
     if (q.words.some((w) => ["hol", "hova", "merre", "honnan"].includes(w)) || q.has("cím", "megközelít", "parkol", "odajut")) {
       return "Újbudán, a Hauszmann Alajos u. 5. szám alatt vagyunk, a Gabányi László Sportcsarnok épületén belül. Gyere be a főbejáraton, ott megtalálsz!";
