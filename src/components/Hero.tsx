@@ -6,7 +6,7 @@
 import React, { useState, useEffect } from 'react';
 import { Navigation, ShieldCheck, ArrowRight, Flame, Gamepad2, Coffee } from 'lucide-react';
 import Club11Logo from './Club11Logo';
-import { OPENING_HOURS, budapestNow, TABLE_CATEGORIES } from '../data';
+import { OPENING_HOURS, budapestNow, GAME_CATEGORIES } from '../data';
 
 // A bisztró pillér kiemelt tételei (csak olyan, ami az árlistában is szerepel)
 const BISTRO_HIGHLIGHTS = ['Illy kávék', 'Retró melegszendvics', 'Nachos sajtszósszal', 'Csapolt sör: Dreher Gold és Pilsner'];
@@ -96,7 +96,7 @@ export default function Hero({ onStartBooking, onExploreMenu, onOpenChat }: Hero
                     <h2 className="text-lg font-black text-white">Játék</h2>
                   </div>
                   <ul className="text-sm text-slate-300 space-y-1">
-                    {TABLE_CATEGORIES.map(c => (
+                    {GAME_CATEGORIES.map(c => (
                       <li key={c.type}>
                         <span className="font-mono font-bold text-emerald-400">{c.count}×</span> {c.name.replace(' Asztal', '').replace(' Gép', '')}
                       </li>

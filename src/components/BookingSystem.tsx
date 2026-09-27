@@ -12,9 +12,13 @@ import {
   DAY_NAMES,
   formatSlotsSummary,
   isSlotInPast,
+  MAX_ONLINE_PARTY_SIZE,
+  CLUB_EMAIL,
 } from '../data';
 import { Booking, TableType } from '../types';
-import { Calendar, Clock, CheckCircle2, AlertCircle, Trash2, Gamepad2, Loader2 } from 'lucide-react';
+import { Calendar, Clock, CheckCircle2, AlertCircle, Trash2, Gamepad2, Loader2, Users } from 'lucide-react';
+
+const formatHuf = (amount: number) => `${amount.toLocaleString('hu-HU')} Ft`;
 
 const MY_BOOKINGS_KEY = 'club11_my_bookings';
 
@@ -52,6 +56,8 @@ export default function BookingSystem() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
+  const [partySize, setPartySize] = useState('');
+  const [note, setNote] = useState('');
 
   const [availability, setAvailability] = useState<Availability | null>(null);
   const [isLoadingSlots, setIsLoadingSlots] = useState(false);
@@ -64,6 +70,9 @@ export default function BookingSystem() {
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
   const category = getTableCategory(selectedType);
+  const isFree = category.hourlyRate === 0;
+  const people = Number(partySize);
+  const tooManyPeople = Number.isInteger(people) && people > MAX_ONLINE_PARTY_SIZE;
 
   // Saját (ebben a böngészőben leadott) foglalások, a már elmúlt napok nélkül
   useEffect(() => {
@@ -133,13 +142,21 @@ export default function BookingSystem() {
       setErrorMsg('Kérlek add meg a telefonszámodat!');
       return;
     }
+    if (!Number.isInteger(people) || people < 1) {
+      setErrorMsg('Kérlek add meg, hány fő érkezik!');
+      return;
+    }
+    if (tooManyPeople) {
+      setErrorMsg(`${MAX_ONLINE_PARTY_SIZE} fő felett csak e-mailes foglalást fogadunk el. Kérlek írj nekünk: ${CLUB_EMAIL}`);
+      return;
+    }
 
     setIsSubmitting(true);
     try {
       const res = await fetch('/api/bookings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type: selectedType, date: selectedDate, timeSlots: selectedSlots, name, email, phone }),
+        body: JSON.stringify({ type: selectedType, date: selectedDate, timeSlots: selectedSlots, name, email, phone, partySize: people, note }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -157,6 +174,7 @@ export default function BookingSystem() {
       setModalData(booking);
       setShowModal(true);
       setSelectedSlots([]);
+      setNote('');
       fetchAvailability(selectedDate);
     } catch {
       setErrorMsg('Hálózati hiba történt, a foglalás nem ment el. Kérlek próbáld újra, vagy hívj minket telefonon!');
@@ -204,7 +222,7 @@ export default function BookingSystem() {
 
         {/* Left column: Game type selection */}
         <div className="lg:col-span-5 space-y-3">
-          <label className="text-xs font-mono uppercase tracking-wider text-slate-400 font-bold block">1. Mivel szeretnél játszani?</label>
+          <label className="text-xs font-mono uppercase tracking-wider text-slate-400 font-bold block">1. Mit szeretnél foglalni?</label>
           <div className="grid grid-cols-1 gap-4">
             {TABLE_CATEGORIES.map((cat) => {
               const isSelected = selectedType === cat.type;
@@ -225,13 +243,15 @@ export default function BookingSystem() {
                 >
                   <div className="flex items-center justify-between gap-2">
                     <h4 className="font-bold text-sm text-white">{cat.name}</h4>
-                    <span className="text-xs font-mono font-black text-white bg-slate-900 px-2.5 py-1 rounded-lg shrink-0">
-                      {cat.hourlyRate.toLocaleString('hu-HU')} Ft / óra
-                    </span>
+                    {cat.hourlyRate > 0 && (
+                      <span className="text-xs font-mono font-black text-white bg-slate-900 px-2.5 py-1 rounded-lg shrink-0">
+                        {formatHuf(cat.hourlyRate)} / óra
+                      </span>
+                    )}
                   </div>
                   <p className="text-[11px] text-slate-400 leading-relaxed pt-1">{cat.description}</p>
                   <div className="flex items-center justify-between border-t border-slate-800/60 pt-2 mt-2">
-                    <span className="text-[10px] font-mono text-slate-500">{cat.count} db a szalonban</span>
+                    <span className="text-[10px] font-mono text-slate-500">{cat.hourlyRate > 0 ? `${cat.count} db a szalonban` : ''}</span>
                     {isSelected ? (
                       <span className="text-xs font-bold font-mono text-emerald-400 flex items-center gap-1">
                         <CheckCircle2 className="w-4 h-4" /> Kijelölve
@@ -318,12 +338,14 @@ export default function BookingSystem() {
                         <span className="text-[10px] text-emerald-400 font-bold block uppercase tracking-wider">Kijelölt Időtartam</span>
                         <span className="text-white font-bold">{formatSlotsSummary(selectedSlots)}</span>
                       </div>
-                      <div className="text-right">
-                        <span className="text-[10px] text-emerald-400 font-bold block uppercase tracking-wider">Várható Díj</span>
-                        <span className="text-emerald-300 font-black text-sm">
-                          {(selectedSlots.length * category.hourlyRate).toLocaleString('hu-HU')} Ft
-                        </span>
-                      </div>
+                      {!isFree && (
+                        <div className="text-right">
+                          <span className="text-[10px] text-emerald-400 font-bold block uppercase tracking-wider">Várható Díj</span>
+                          <span className="text-emerald-300 font-black text-sm">
+                            {formatHuf(selectedSlots.length * category.hourlyRate)}
+                          </span>
+                        </div>
+                      )}
                     </div>
                   )}
 
@@ -394,6 +416,50 @@ export default function BookingSystem() {
                   className="w-full bg-slate-900 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500"
                 />
               </div>
+
+              {/* Hány fő érkezik */}
+              <div className="space-y-1.5">
+                <label htmlFor="booking-party-size" className="text-xs font-mono uppercase tracking-wider text-slate-400 font-bold flex items-center gap-1.5">
+                  <Users className="w-3.5 h-3.5 text-emerald-400" />
+                  Hány fő érkezik?
+                </label>
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  min={1}
+                  step={1}
+                  placeholder="Pl. 4"
+                  id="booking-party-size"
+                  required
+                  value={partySize}
+                  onChange={(e) => setPartySize(e.target.value)}
+                  className={`w-full sm:w-40 bg-slate-900 border rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none ${
+                    tooManyPeople ? 'border-amber-500 focus:border-amber-500' : 'border-slate-800 focus:border-emerald-500'
+                  }`}
+                />
+                {tooManyPeople && (
+                  <p className="text-[11px] text-amber-300" id="booking-party-size-warning">
+                    {MAX_ONLINE_PARTY_SIZE} fő felett csak e-mailes foglalást fogadunk el. Kérlek írj nekünk:{' '}
+                    <a href={`mailto:${CLUB_EMAIL}`} className="underline font-bold">{CLUB_EMAIL}</a>
+                  </p>
+                )}
+              </div>
+
+              {/* Megjegyzés, kérés */}
+              <div className="space-y-1.5">
+                <label htmlFor="booking-note" className="text-xs font-mono uppercase tracking-wider text-slate-400 font-bold block">
+                  Megjegyzés, kérés <span className="normal-case font-normal text-slate-500">(nem kötelező)</span>
+                </label>
+                <textarea
+                  id="booking-note"
+                  rows={3}
+                  maxLength={500}
+                  placeholder="Pl. születésnapot tartunk, egymás melletti asztalokat kérünk…"
+                  value={note}
+                  onChange={(e) => setNote(e.target.value)}
+                  className="w-full bg-slate-900 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500 resize-y"
+                />
+              </div>
             </div>
 
             {errorMsg && (
@@ -450,11 +516,13 @@ export default function BookingSystem() {
                   <p className="text-xs font-mono text-slate-400">
                     Időpont: <strong className="text-white">{booking.timeSlot}</strong>
                   </p>
-                  <p className="text-xs font-mono text-emerald-400 font-bold">
-                    Összeg: {booking.totalPrice.toLocaleString('hu-HU')} Ft
-                  </p>
+                  {booking.totalPrice > 0 && (
+                    <p className="text-xs font-mono text-emerald-400 font-bold">
+                      Összeg: {formatHuf(booking.totalPrice)}
+                    </p>
+                  )}
                   <p className="text-[11px] text-slate-500 font-sans">
-                    Név: {booking.name} | Tel: {booking.phone}
+                    Név: {booking.name} | Tel: {booking.phone}{booking.partySize ? ` | ${booking.partySize} fő` : ''}
                   </p>
                 </div>
 
@@ -501,9 +569,11 @@ export default function BookingSystem() {
                 ['Játék:', modalData.typeName],
                 ['Dátum:', `${modalData.date} (${DAY_NAMES[dayOfWeek(modalData.date)]})`],
                 ['Idősáv(ok):', modalData.timeSlot],
+                ['Létszám:', `${modalData.partySize} fő`],
                 ['Foglaló neve:', modalData.name],
                 ['Telefonszám:', modalData.phone],
                 ['E-mail:', modalData.email],
+                ...(modalData.note ? [['Megjegyzés, kérés:', modalData.note]] : []),
               ].map(([label, value]) => (
                 <div key={label} className="flex justify-between gap-4 py-1 border-b border-slate-850">
                   <span className="text-slate-400">{label}</span>
@@ -513,7 +583,7 @@ export default function BookingSystem() {
               <div className="flex justify-between py-1 pt-1">
                 <span className="text-slate-400">Várható fizetendő:</span>
                 <span className="font-black text-emerald-400 text-sm text-right">
-                  {modalData.totalPrice.toLocaleString('hu-HU')} Ft
+                  {modalData.totalPrice > 0 ? formatHuf(modalData.totalPrice) : 'Díjmentes – a fogyasztás kötelező'}
                 </span>
               </div>
             </div>

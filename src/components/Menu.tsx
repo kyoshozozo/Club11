@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { MENU_ITEMS, TABLE_CATEGORIES } from '../data';
+import { MENU_ITEMS, GAME_CATEGORIES } from '../data';
 import { Search, Heart, Award, AlertCircle } from 'lucide-react';
 
 type Category = 'etlap' | 'itallap' | 'jatekok';
@@ -24,7 +24,7 @@ const formatPrice = (price: number | string) =>
 const CARDS: Record<Category, PriceCard[]> = {
   etlap: MENU_ITEMS.filter(i => i.category === 'etlap').map(i => ({ ...i, priceLabel: formatPrice(i.price) })),
   itallap: MENU_ITEMS.filter(i => i.category === 'itallap').map(i => ({ ...i, priceLabel: formatPrice(i.price) })),
-  jatekok: TABLE_CATEGORIES.map(c => ({
+  jatekok: GAME_CATEGORIES.map(c => ({
     id: `game-${c.type}`,
     name: c.name,
     description: `${c.description} (${c.count} db a szalonban)`,
