@@ -13,7 +13,8 @@ import About from './components/About';
 import Gallery from './components/Gallery';
 import AiChatbot from './components/AiChatbot';
 import Club11Logo from './components/Club11Logo';
-import { Coffee, Gamepad2, Sun, MapPin, MessageSquare, Facebook, Phone, Heart } from 'lucide-react';
+import { Coffee, Gamepad2, Info, MapPin, MessageSquare, Facebook, Phone, Heart } from 'lucide-react';
+import { HOUSE_RULES, BOOKING_INFO } from './data';
 
 export default function App() {
   const [activeSection, setActiveSection] = useState<string>('home');
@@ -62,14 +63,35 @@ export default function App() {
                   Club 11 Élmény
                 </span>
                 <h2 className="text-3xl font-black text-white tracking-tight">Mit találsz nálunk?</h2>
-                <p className="text-slate-400 max-w-xl mx-auto text-xs">
-                  Nem csak egy asztalt adunk – nálunk a hangulat, a kiszolgálás és a minőség kéz a kézben járnak.
-                </p>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                
-                {/* Feature 1: Kávézó és Bisztró */}
+
+                {/* Feature 1: Információk és szabályok */}
+                <div
+                  className="p-6 rounded-2xl bg-slate-900 border border-slate-800 hover:border-emerald-500/40 transition-all cursor-pointer group"
+                  onClick={() => navigate('about')}
+                  id="feature-card-info"
+                >
+                  <div className="w-12 h-12 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
+                    <Info className="w-6 h-6" />
+                  </div>
+                  <h3 className="text-lg font-bold text-white mb-2 group-hover:text-emerald-400 transition-colors">Információk és szabályok</h3>
+                  <div className="text-xs text-slate-400 leading-relaxed space-y-2">
+                    <p className="text-slate-200 font-semibold">Kedves Vendégeink!<br />Fontos információk!</p>
+                    <p>{BOOKING_INFO}</p>
+                    <ul className="space-y-1.5">
+                      {HOUSE_RULES.map(rule => <li key={rule}>{rule}</li>)}
+                    </ul>
+                    <p className="italic">„Környezetünk és programjaink elsősorban felnőtt vendégeink igényeihez igazodnak.” 🍻</p>
+                    <p>Köszönjük megértésüket.💕</p>
+                  </div>
+                  <span className="inline-flex items-center gap-1.5 text-xs text-emerald-400 font-bold font-mono pt-4">
+                    Elérhetőségek &rarr;
+                  </span>
+                </div>
+
+                {/* Feature 2: Kávézó és Bisztró */}
                 <div
                   className="p-6 rounded-2xl bg-slate-900 border border-slate-800 hover:border-amber-500/40 transition-all cursor-pointer group"
                   onClick={() => navigate('menu')}
@@ -87,7 +109,7 @@ export default function App() {
                   </span>
                 </div>
 
-                {/* Feature 2: Biliárd, darts, csocsó */}
+                {/* Feature 3: Biliárd, darts, csocsó */}
                 <div
                   className="p-6 rounded-2xl bg-slate-900 border border-slate-800 hover:border-emerald-500/40 transition-all cursor-pointer group"
                   onClick={() => navigate('booking')}
@@ -102,24 +124,6 @@ export default function App() {
                   </p>
                   <span className="inline-flex items-center gap-1.5 text-xs text-emerald-400 font-bold font-mono pt-4">
                     Asztalfoglalás indítása &rarr;
-                  </span>
-                </div>
-
-                {/* Feature 3: Terasz és közösség */}
-                <div
-                  className="p-6 rounded-2xl bg-slate-900 border border-slate-800 hover:border-slate-700 transition-all cursor-pointer group"
-                  onClick={() => navigate('posts')}
-                  id="feature-card-events"
-                >
-                  <div className="w-12 h-12 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
-                    <Sun className="w-6 h-6" />
-                  </div>
-                  <h3 className="text-lg font-bold text-white mb-2 group-hover:text-emerald-400 transition-colors">Terasz és közösség</h3>
-                  <p className="text-xs text-slate-400 leading-relaxed">
-                    Nyáron hangulatos, zárt terasszal és hűsölési lehetőséggel várjuk vendégeinket. Nálunk a baráti társaságok, a családok és a munkatársak is otthon érzik magukat. Egy kávé, egy jó beszélgetés vagy egy baráti biliárdparti mindig belefér!
-                  </p>
-                  <span className="inline-flex items-center gap-1.5 text-xs text-emerald-400 font-bold font-mono pt-4">
-                    Friss hírek olvasása &rarr;
                   </span>
                 </div>
 

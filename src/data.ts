@@ -138,9 +138,20 @@ export const MENU_ITEMS: MenuItem[] = [
   { id: 'it-sommersby', name: 'Sommersby', category: 'itallap', price: 1000, description: 'Könnyed, édeskés, gyümölcsös almabor.' },
   { id: 'it-bor', name: 'Bor', category: 'itallap', price: '550 - 1100', description: 'Rosé és fehér borok kimérve.' },
   { id: 'it-cseles', name: 'Cseles', category: 'itallap', price: 1500, description: 'Különleges, fűszeres alkoholos koktél.' },
-  { id: 'it-rovidek', name: 'Rövidek', category: 'itallap', price: '1200 - 1550', description: 'Rövid italok.' },
+  { id: 'it-rovidek', name: 'Rövid italok', category: 'itallap', price: '1200 - 1550', description: 'Égetett szeszek, whiskey-k, vodka, gin, rumok és tequila.' },
   { id: 'it-kavek', name: 'Kávék', category: 'itallap', price: '600 - 1250', description: 'Frissen főzött Illy kávék és tejes kávéitalok.' },
   { id: 'it-tea-mezzel', name: 'Tea mézzel', category: 'itallap', price: 750, description: 'Melegítő, zamatos tea minőségi mézzel ízesítve.' },
+];
+
+// Házirend: a főoldal "Információk és szabályok" kockája és az AI csapos is ezt használja
+export const BOOKING_INFO =
+  'Biliárdhoz foglalás szükséges, a többi játékhoz ajánlott, e-mailen vagy messengeren, vagy 14h után telefonon.';
+export const HOUSE_RULES = [
+  '🎱 Biliárd és darts használata csak 12 év felett lehetséges szülői felügyelettel.‼️',
+  '🔞 20:00 után csak 16+ tartózkodhat az üzletben‼️',
+  '🍹 A játékok használata mellett fogyasztás kötelező‼️',
+  '🍽 Melegétel fogyasztás 20:00 óráig.',
+  '6 fő felett csak e-mailes foglalást fogadunk el.',
 ];
 
 // AI csapos: egy beszélgetésben legfeljebb ennyi kérdésre válaszol, utána telefonra irányít
