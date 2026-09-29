@@ -155,7 +155,7 @@ export default function About() {
               Üzenetküldés
             </h3>
             <p className="text-xs text-slate-400 leading-relaxed font-sans">
-              Kérdésed van csoportos foglalással, céges rendezvényekkel vagy biliárd versenyekkel kapcsolatban? Írj nekünk üzenetet, és hamarosan válaszolunk!
+              Kérdésed van csoportos foglalással, céges vagy családi rendezvényekkel kapcsolatban? Írj nekünk üzenetet, és hamarosan válaszolunk!
             </p>
           </div>
 
@@ -252,7 +252,7 @@ export default function About() {
             </p>
             <div className="pt-2">
               <a 
-                href="https://www.google.com/maps/search/?api=1&query=Budapest+Hauszmann+Alajos+utca+5+Gab%C3%A1nyi+L%C3%A1szl%C3%B3+Sportcsarnok"
+                href="https://www.google.com/maps/place/Club11+%C3%9Ajbuda+Bili%C3%A1rd,+darts+bistro/@47.4664317,19.0479528,17z/data=!4m6!3m5!1s0x4741ddc3b8ccd9ab:0x4a422135d07b34a!8m2!3d47.4664317!4d19.0479528!16s%2Fg%2F11h3qxd3jv"
                 target="_blank"
                 rel="noopener noreferrer"
                 id="maps-direction-link"

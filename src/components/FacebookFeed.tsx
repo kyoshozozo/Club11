@@ -4,7 +4,13 @@
  */
 
 import React from 'react';
-import { ExternalLink, Facebook } from 'lucide-react';
+import { ExternalLink, Facebook, MessageCircle, Phone } from 'lucide-react';
+import Club11Logo from './Club11Logo';
+
+// A beágyazott Facebook idővonal a legtöbb böngészőben nem tölt be (harmadik féltől
+// származó sütik tiltása), ezért az oldal közvetlenül a Facebook oldalra és a Messengerre visz.
+const FACEBOOK_URL = 'https://www.facebook.com/club11ujbuda';
+const MESSENGER_URL = 'https://m.me/club11ujbuda';
 
 export default function FacebookFeed() {
   return (
@@ -14,58 +20,60 @@ export default function FacebookFeed() {
       <div className="text-center space-y-4 mb-10">
         <span className="text-xs font-mono uppercase tracking-widest text-emerald-400 font-bold flex items-center justify-center gap-1.5">
           <Facebook className="w-4 h-4 fill-current text-emerald-400" />
-          Hírek a Facebook oldalunkról
+          Hírek a Facebook oldalunkon
         </span>
         <h2 className="text-3xl sm:text-4xl font-black text-white tracking-tight">Hírek és Bejegyzések</h2>
         <p className="text-slate-400 max-w-2xl mx-auto text-sm">
-          A Club 11 minden hírt, eseményt és akciót a hivatalos Facebook oldalán tesz közzé. Az alábbi idővonalon közvetlenül a Facebookról láthatod a legfrissebb bejegyzéseinket.
+          A Club 11 minden hírt, eseményt és újdonságot a hivatalos Facebook oldalán tesz közzé. Kövess minket, hogy ne maradj le semmiről!
         </p>
       </div>
 
-      {/* Egyetlen nézet: élő Facebook idővonal */}
-      <div className="flex border-b border-slate-800 mb-8 p-1 bg-slate-950/40 rounded-2xl max-w-xs mx-auto">
-        <button
-          type="button"
-          aria-pressed="true"
-          className="flex-1 py-2.5 px-4 rounded-xl text-xs tracking-tight flex items-center justify-center gap-2 bg-emerald-500 text-slate-950 shadow-lg font-black cursor-default"
-        >
-          <Facebook className="w-3.5 h-3.5 fill-current" />
-          Élő Idővonal Widget
-        </button>
-      </div>
-
-      {/* Official Live Widget Embed */}
-      <div className="space-y-6">
-        <div className="p-4 rounded-2xl bg-slate-950/50 border border-slate-800 text-center text-xs text-slate-400 max-w-xl mx-auto leading-relaxed">
-          <span className="font-bold text-white block mb-1">Élő Idővonal a Facebookról</span>
-          Ez az ablak a valós idejű Facebook idővonalunkat mutatja. Ha nem jelenik meg, ellenőrizd, hogy a böngésződ nem blokkolja-e a Facebook sütiket és widgeteket, vagy nyisd meg az oldalunkat közvetlenül a Facebookon!
+      {/* Fő kártya: a Facebook oldal */}
+      <div className="rounded-2xl border border-emerald-500/30 bg-gradient-to-b from-emerald-500/10 to-slate-950/40 p-6 sm:p-8 text-center space-y-6" id="facebook-card">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-24 h-24 rounded-full bg-slate-950 border-2 border-emerald-500/40 flex items-center justify-center">
+            <Club11Logo className="w-20 h-20 text-white" showText={true} />
+          </div>
+          <div>
+            <h3 className="text-xl font-black text-white">Club 11 Újbuda Biliárd club</h3>
+            <p className="text-xs font-mono text-slate-400">facebook.com/club11ujbuda</p>
+          </div>
         </div>
 
-        <div className="flex justify-center bg-slate-950 rounded-2xl p-4 border border-slate-800 max-w-xl mx-auto overflow-hidden shadow-inner">
-          <iframe
-            src="https://www.facebook.com/plugins/page.php?href=https%3A%2F%2Fwww.facebook.com%2Fclub11ujbuda&tabs=timeline&width=500&height=700&small_header=false&adapt_container_width=true&hide_cover=false&show_facepile=true&appId"
-            width="100%"
-            height="650"
-            style={{ border: 'none', overflow: 'hidden', borderRadius: '12px' }}
-            scrolling="no"
-            frameBorder="0"
-            allowFullScreen={true}
-            allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share"
-            title="Club 11 Hivatalos Facebook Oldal"
-          />
-        </div>
-
-        <div className="text-center">
+        <div className="flex flex-col sm:flex-row gap-3 justify-center">
           <a
-            href="https://www.facebook.com/club11ujbuda"
+            href={FACEBOOK_URL}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-tr from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-sm font-black text-slate-950 transition-all shadow-md"
+            id="facebook-open-btn"
+            className="inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 font-black text-sm transition-all shadow-lg shadow-emerald-500/20"
           >
-            Megnyitás közvetlenül a Facebookon
-            <ExternalLink className="w-4 h-4 text-slate-950" />
+            <Facebook className="w-4 h-4 fill-current" />
+            Legfrissebb híreink a Facebookon
+            <ExternalLink className="w-4 h-4" />
+          </a>
+          <a
+            href={MESSENGER_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            id="messenger-open-btn"
+            className="inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 text-white font-bold text-sm transition-all"
+          >
+            <MessageCircle className="w-4 h-4 text-emerald-400" />
+            Írj nekünk Messengeren
           </a>
         </div>
+
+        <p className="text-[11px] text-slate-500">
+          A gombok új lapon nyitják meg a Facebookot. Messengeren asztalt is foglalhatsz, vagy bármit kérdezhetsz tőlünk.
+        </p>
+      </div>
+
+      {/* Telefon */}
+      <div className="mt-8 text-center text-xs text-slate-400 flex items-center justify-center gap-2">
+        <Phone className="w-4 h-4 text-emerald-400" />
+        Kérdésed van? Hívj minket:
+        <a href="tel:+36706214181" className="font-mono font-bold text-white hover:text-emerald-400 transition-colors">+36 70 621 4181</a>
       </div>
 
     </div>

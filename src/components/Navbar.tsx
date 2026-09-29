@@ -4,7 +4,7 @@
  */
 
 import React, { useState } from 'react';
-import { MapPin, Phone, Clock, MessageSquare, Coffee, Layers, BookOpen, Camera, Menu as MenuIcon, X } from 'lucide-react';
+import { MapPin, Phone, Clock, MessageSquare, Coffee, Layers, BookOpen, Camera, PartyPopper, Menu as MenuIcon, X } from 'lucide-react';
 import Club11Logo from './Club11Logo';
 
 interface NavbarProps {
@@ -23,6 +23,7 @@ export default function Navbar({ activeSection, setActiveSection, isChatOpen, se
     { id: 'menu', label: 'Áraink', icon: Coffee },
     { id: 'gallery', label: 'Galéria', icon: Camera },
     { id: 'posts', label: 'Hírek', icon: BookOpen },
+    { id: 'events', label: 'Rendezvények', icon: PartyPopper },
     { id: 'about', label: 'Kapcsolat', icon: MapPin },
   ];
 
@@ -40,7 +41,7 @@ export default function Navbar({ activeSection, setActiveSection, isChatOpen, se
           </div>
 
           {/* Nav items */}
-          <div className="hidden md:flex items-center gap-1">
+          <div className="hidden xl:flex items-center gap-0.5">
             {navItems.map((item) => {
               const Icon = item.icon;
               const isActive = activeSection === item.id;
@@ -49,7 +50,7 @@ export default function Navbar({ activeSection, setActiveSection, isChatOpen, se
                   key={item.id}
                   id={`nav-link-${item.id}`}
                   onClick={() => setActiveSection(item.id)}
-                  className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${
+                  className={`flex items-center gap-1.5 px-2.5 py-2.5 rounded-lg text-sm font-medium transition-all ${
                     isActive 
                       ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' 
                       : 'text-slate-300 hover:text-white hover:bg-slate-900'
@@ -66,7 +67,7 @@ export default function Navbar({ activeSection, setActiveSection, isChatOpen, se
           <div className="flex items-center gap-2 sm:gap-3">
             <a 
               href="tel:+36706214181" 
-              className="hidden lg:flex items-center gap-2 text-slate-400 hover:text-white transition-all text-sm font-mono"
+              className="hidden 2xl:flex items-center gap-2 text-slate-400 hover:text-white transition-all text-sm font-mono"
               id="nav-phone-link"
             >
               <Phone className="w-4 h-4 text-emerald-400 animate-pulse" />
@@ -97,7 +98,7 @@ export default function Navbar({ activeSection, setActiveSection, isChatOpen, se
               aria-label={isMobileMenuOpen ? 'Menü bezárása' : 'Menü megnyitása'}
               aria-expanded={isMobileMenuOpen}
               aria-controls="mobile-menu"
-              className="md:hidden p-2.5 rounded-xl border border-slate-800 bg-slate-900 text-slate-200 hover:text-white hover:bg-slate-800 transition-all"
+              className="xl:hidden p-2.5 rounded-xl border border-slate-800 bg-slate-900 text-slate-200 hover:text-white hover:bg-slate-800 transition-all"
             >
               {isMobileMenuOpen ? <X className="w-5 h-5" /> : <MenuIcon className="w-5 h-5" />}
             </button>
@@ -107,7 +108,7 @@ export default function Navbar({ activeSection, setActiveSection, isChatOpen, se
 
       {/* Mobile menu panel */}
       {isMobileMenuOpen && (
-        <div id="mobile-menu" className="md:hidden border-t border-slate-800 bg-slate-950/95 backdrop-blur-md">
+        <div id="mobile-menu" className="xl:hidden border-t border-slate-800 bg-slate-950/95 backdrop-blur-md">
           <div className="px-4 py-3 space-y-1">
             {navItems.map((item) => {
               const Icon = item.icon;
