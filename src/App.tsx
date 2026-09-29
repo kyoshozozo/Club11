@@ -9,6 +9,7 @@ import Hero from './components/Hero';
 import BookingSystem from './components/BookingSystem';
 import Menu from './components/Menu';
 import FacebookFeed from './components/FacebookFeed';
+import Events from './components/Events';
 import About from './components/About';
 import Gallery from './components/Gallery';
 import AiChatbot from './components/AiChatbot';
@@ -136,6 +137,7 @@ export default function App() {
         {activeSection === 'menu' && <Menu />}
         {activeSection === 'gallery' && <Gallery />}
         {activeSection === 'posts' && <FacebookFeed />}
+        {activeSection === 'events' && <Events />}
         {activeSection === 'about' && <About />}
       </main>
 
