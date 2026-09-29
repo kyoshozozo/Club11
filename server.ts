@@ -129,7 +129,8 @@ async function startServer() {
     - Cím: 1116 Budapest, Hauszmann Alajos u. 5. (A Gabányi László Sportcsarnok épületén belül található a szalon).
     - Telefon: +36 70 621 4181 (asztalfoglalás, rendezvények, információk).
     - Email: club11buda@gmail.com
-    - Facebook oldal: https://www.facebook.com/club11ujbuda (itt képeket, aktuális híreket és versenykiírásokat találnak).
+    - Facebook oldal: https://www.facebook.com/club11ujbuda (itt képeket, aktuális híreket és eseményeket találnak).
+    - Rendezvények: a Club 11 lehetőséget biztosít baráti összejövetelek, céges rendezvények (csapatépítők, évzárók, céges bulik), családi ünnepségek, születésnapi bulik, osztálytalálkozók, leány- és legénybúcsúk megtartására. Kisebb és nagyobb társaságoknak is ideális. Érdeklődni a club11buda@gmail.com címen lehet (a weboldalon a "Rendezvények" menüpontban is megtalálják). Rendezvényre árajánlatot ne adj, az e-mailben egyeztetendő.
     - Nyitvatartás:
 ${OPENING_HOURS_TEXT}
     - Játékterek és óradíjak (Rex asztal nincs):
@@ -298,6 +299,10 @@ ${HOUSE_RULES.map((rule) => `      * ${rule}`).join("\n")}
     const today = budapestNow().date;
     const q = parseQuestion(String(lastUserMessage), today);
 
+    // Rendezvények (céges, születésnap, osztálytalálkozó stb.) – e-mailes egyeztetés
+    if (q.has("rendezvény", "céges", "csapatépít", "évzáró", "születésnap", "szülinap", "osztálytalálkoz", "legénybúcsú", "lánybúcsú", "leánybúcsú", "parti", "buli")) {
+      return `Szívesen látunk titeket! A Club 11-ben baráti összejövetelt, céges rendezvényt, családi ünnepséget, születésnapi bulit, osztálytalálkozót, leány- vagy legénybúcsút is tarthattok. Érdeklődni a ${CLUB_EMAIL} címen tudtok, a részleteket a weboldal Rendezvények menüpontjában találjátok.`;
+    }
     // Szabad hely / foglalás (ha van benne időpont, nap vagy játék, az a legfontosabb)
     if (q.hour !== null || q.has("foglal", "asztal", "szabad", "időpont", "pálya", "gép") ||
         (q.type && q.has("ma", "holnap", ...WEEKDAY_STEMS, "van", "lehet"))) {
