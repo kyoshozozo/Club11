@@ -13,6 +13,7 @@ import crypto from "crypto";
 import dns from "dns";
 import {
   TABLE_CATEGORIES,
+  bookingItemLabel,
   MENU_ITEMS,
   OPENING_HOURS,
   DAY_NAMES,
@@ -61,8 +62,11 @@ async function startServer() {
   const writeBookings = (bookings: Booking[]) =>
     fs.writeFileSync(bookingsFilePath, JSON.stringify(bookings, null, 2), "utf-8");
 
+  // Hány asztal/gép foglalt már az adott idősávban (egy foglalás több darabot is lefoglalhat)
   const countBooked = (bookings: Booking[], type: TableType, date: string, slot: string) =>
-    bookings.filter((b) => b.type === type && b.date === date && b.timeSlots.includes(slot)).length;
+    bookings
+      .filter((b) => b.type === type && b.date === date && b.timeSlots.includes(slot))
+      .reduce((sum, b) => sum + (b.quantity ?? 1), 0);
 
   // Szabad helyek száma idősávonként és típusonként egy adott napra
   // (elmúlt/elkezdődött idősávnál 0). A foglaló és az AI csapos is ezt használja.
@@ -647,7 +651,7 @@ ${HOUSE_RULES.map((rule) => `      * ${rule}`).join("\n")}
     const total = group.reduce((sum, b) => sum + b.totalPrice, 0);
     const lines = [
       `Dátum: ${first.date} (${DAY_NAMES[dayOfWeek(first.date)].toLowerCase()})`,
-      ...group.map((b) => `  • ${b.typeName}: ${b.timeSlot}${b.totalPrice > 0 ? ` – ${formatPrice(b.totalPrice)}` : " – díjmentes, a fogyasztás kötelező"}`),
+      ...group.map((b) => `  • ${bookingItemLabel(b)}: ${b.timeSlot}${b.totalPrice > 0 ? ` – ${formatPrice(b.totalPrice)}` : " – díjmentes, a fogyasztás kötelező"}`),
       `Létszám: ${first.partySize} fő`,
       `Név: ${first.name}`,
       `E-mail: ${first.email}`,
@@ -736,7 +740,7 @@ ${HOUSE_RULES.map((rule) => `      * ${rule}`).join("\n")}
         return res.status(400).json({ error: "Kérlek válassz ki legalább egy játékot vagy asztalt és idősávot!" });
       }
       const seenTypes = new Set<string>();
-      const parsedItems: { category: (typeof TABLE_CATEGORIES)[number]; slots: string[] }[] = [];
+      const parsedItems: { category: (typeof TABLE_CATEGORIES)[number]; slots: string[]; quantity: number }[] = [];
       for (const item of items) {
         const category = TABLE_CATEGORIES.find((c) => c.type === item?.type);
         if (!category || seenTypes.has(category.type)) {
@@ -754,7 +758,12 @@ ${HOUSE_RULES.map((rule) => `      * ${rule}`).join("\n")}
         if (timeSlots.some((slot: string) => isSlotInPast(date, slot))) {
           return res.status(400).json({ error: "Már elkezdődött vagy elmúlt idősávra nem lehet foglalni." });
         }
-        parsedItems.push({ category, slots: openSlots.filter((slot) => timeSlots.includes(slot)) });
+        // Darabszám: hány asztalt/gépet kér ebből (régi kliens nem küldi = 1)
+        const quantity = item.quantity === undefined ? 1 : Number(item.quantity);
+        if (!Number.isInteger(quantity) || quantity < 1 || quantity > category.count) {
+          return res.status(400).json({ error: `${category.name}: legfeljebb ${category.count} db foglalható egyszerre.` });
+        }
+        parsedItems.push({ category, slots: openSlots.filter((slot) => timeSlots.includes(slot)), quantity });
       }
 
       const cleanName = typeof name === "string" ? name.trim().slice(0, 100) : "";
@@ -775,17 +784,19 @@ ${HOUSE_RULES.map((rule) => `      * ${rule}`).join("\n")}
       const cleanNote = typeof note === "string" ? note.trim().slice(0, 500) : "";
 
       const bookings = readBookings();
-      for (const { category, slots } of parsedItems) {
-        const fullSlots = slots.filter((slot) => countBooked(bookings, category.type, date, slot) >= category.count);
+      for (const { category, slots, quantity } of parsedItems) {
+        const fullSlots = slots.filter((slot) => countBooked(bookings, category.type, date, slot) + quantity > category.count);
         if (fullSlots.length > 0) {
           return res.status(409).json({
-            error: `Sajnáljuk, ebben az idősávban már minden ${category.name.toLowerCase()} foglalt: ${fullSlots.join(", ")}. Kérlek válassz másik időpontot!`,
+            error: quantity > 1
+              ? `Sajnáljuk, ebben az idősávban nincs ${quantity} db szabad ${category.name.toLowerCase()}: ${fullSlots.join(", ")}. Kérlek válassz kevesebbet vagy másik időpontot!`
+              : `Sajnáljuk, ebben az idősávban már minden ${category.name.toLowerCase()} foglalt: ${fullSlots.join(", ")}. Kérlek válassz másik időpontot!`,
           });
         }
       }
 
       const groupId = `grp-${Date.now()}-${crypto.randomBytes(3).toString("hex")}`;
-      const created: Booking[] = parsedItems.map(({ category, slots }) => ({
+      const created: Booking[] = parsedItems.map(({ category, slots, quantity }) => ({
         id: `book-${Date.now()}-${crypto.randomBytes(3).toString("hex")}`,
         groupId,
         type: category.type,
@@ -794,7 +805,8 @@ ${HOUSE_RULES.map((rule) => `      * ${rule}`).join("\n")}
         timeSlots: slots,
         timeSlot: formatSlotsSummary(slots),
         durationHours: slots.length,
-        totalPrice: slots.length * category.hourlyRate,
+        quantity,
+        totalPrice: slots.length * category.hourlyRate * quantity,
         partySize: people,
         ...(cleanNote ? { note: cleanNote } : {}),
         name: cleanName,
@@ -808,7 +820,7 @@ ${HOUSE_RULES.map((rule) => `      * ${rule}`).join("\n")}
 
       console.log(`==================================================`);
       console.log(`[ÚJ FOGLALÁS] ${date} – ${cleanName} | ${cleanEmail} | ${cleanPhone} | ${people} fő`);
-      for (const b of created) console.log(`  • ${b.typeName}: ${b.timeSlot}`);
+      for (const b of created) console.log(`  • ${bookingItemLabel(b)}: ${b.timeSlot}`);
       if (cleanNote) console.log(`Megjegyzés, kérés: ${cleanNote}`);
       console.log(`==================================================`);
 
@@ -833,7 +845,7 @@ ${HOUSE_RULES.map((rule) => `      * ${rule}`).join("\n")}
         return res.status(403).json({ error: "Ezt a foglalást nem mondhatod le." });
       }
       writeBookings(bookings.filter((b) => b.id !== booking.id));
-      console.log(`[FOGLALÁS LEMONDVA] ${booking.typeName} – ${booking.date} ${booking.timeSlot} – ${booking.name}`);
+      console.log(`[FOGLALÁS LEMONDVA] ${bookingItemLabel(booking)} – ${booking.date} ${booking.timeSlot} – ${booking.name}`);
       res.json({ success: true });
     } catch (err: any) {
       console.error("Hiba a foglalás lemondása során:", err);
@@ -910,7 +922,7 @@ ${HOUSE_RULES.map((rule) => `      * ${rule}`).join("\n")}
       const removed = bookings.filter((b) => groupKey(b) === key);
       writeBookings(bookings.filter((b) => groupKey(b) !== key));
       for (const b of removed) {
-        console.log(`[FOGLALÁS TÖRÖLVE (admin)] ${b.typeName} – ${b.date} ${b.timeSlot} – ${b.name}`);
+        console.log(`[FOGLALÁS TÖRÖLVE (admin)] ${bookingItemLabel(b)} – ${b.date} ${b.timeSlot} – ${b.name}`);
       }
       res.json({ success: true });
     } catch (err: any) {
