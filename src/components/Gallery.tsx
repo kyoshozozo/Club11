@@ -6,6 +6,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Camera, Image as ImageIcon, X, ZoomIn, Upload, Trash2, ChevronLeft, ChevronRight, Lock, Unlock, LogOut, Loader2 } from 'lucide-react';
+import AdminBookings from './AdminBookings';
 
 interface GalleryItem {
   id: string;
@@ -268,6 +269,11 @@ export default function Gallery() {
         </motion.div>
       )}
 
+      {/* Foglalások listája (csak adminnak) */}
+      {isAdmin && adminToken && (
+        <AdminBookings token={adminToken} onSessionExpired={handleLogout} />
+      )}
+
       {/* Owner-Only Upload Panel */}
       {isAdmin && (
         <motion.div 
@@ -454,7 +460,7 @@ export default function Gallery() {
             className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-950/20 hover:bg-slate-900 border border-transparent hover:border-slate-800 text-slate-600 hover:text-slate-400 text-xs font-mono font-bold transition-all"
           >
             <Lock className="w-3.5 h-3.5" />
-            Galéria Admin Belépés
+            Admin belépés (galéria, foglalások)
           </button>
         </div>
       )}
@@ -576,7 +582,7 @@ export default function Gallery() {
                   Adminisztrátori Belépés
                 </h3>
                 <p className="text-xs text-slate-400 font-sans">
-                  Kérjük, add meg az admin jelszót a galéria kezeléséhez!
+                  Kérjük, add meg az admin jelszót a galéria és a foglalások kezeléséhez!
                 </p>
               </div>
 
