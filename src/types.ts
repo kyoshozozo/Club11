@@ -23,6 +23,7 @@ export interface Booking {
   timeSlots: string[]; // e.g., ["14:00 - 15:00", "15:00 - 16:00"]
   timeSlot: string; // e.g., "14:00 - 16:00 (2 óra)"
   durationHours: number;
+  quantity?: number; // hány asztalt/gépet foglal ebből egyszerre (régi foglalásoknál hiányzik = 1)
   totalPrice: number; // total price in HUF
   partySize: number; // hány fő érkezik
   note?: string; // megjegyzés, kérés

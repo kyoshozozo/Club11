@@ -3,7 +3,13 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { TableCategory, TableType, MenuItem, DayHours } from './types';
+import { TableCategory, TableType, MenuItem, DayHours, Booking } from './types';
+
+// Egy foglalási tétel megnevezése a darabszámmal, pl. "Pool Biliárd Asztal (2 db)"
+export function bookingItemLabel(b: Pick<Booking, 'typeName' | 'quantity'>): string {
+  const quantity = b.quantity ?? 1;
+  return quantity > 1 ? `${b.typeName} (${quantity} db)` : b.typeName;
+}
 
 // Játékterek: a vendég a típust foglalja, egy idősávban legfeljebb `count` foglalás lehet.
 export const TABLE_CATEGORIES: TableCategory[] = [
