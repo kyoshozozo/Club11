@@ -10,6 +10,7 @@ import nodemailer from "nodemailer";
 import dotenv from "dotenv";
 import fs from "fs";
 import crypto from "crypto";
+import dns from "dns";
 import {
   TABLE_CATEGORIES,
   MENU_ITEMS,
@@ -604,18 +605,41 @@ ${HOUSE_RULES.map((rule) => `      * ${rule}`).join("\n")}
   //   (nem kötelező: SMTP_HOST, SMTP_PORT, SMTP_SECURE, BOOKING_NOTIFY_EMAIL)
   // Ha nincs beállítva, a foglalás ugyanúgy mentődik, csak e-mail nem megy ki.
   // ------------------------------------------------------------------
+  const smtpHost = process.env.SMTP_HOST || "smtp.gmail.com";
   const smtpPort = Number(process.env.SMTP_PORT) || 465;
-  const mailTransport = process.env.SMTP_USER && process.env.SMTP_PASS
-    ? nodemailer.createTransport({
-        host: process.env.SMTP_HOST || "smtp.gmail.com",
-        port: smtpPort,
-        secure: (process.env.SMTP_SECURE ?? String(smtpPort === 465)) === "true",
-        auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
-      })
-    : null;
+  const mailConfigured = !!(process.env.SMTP_USER && process.env.SMTP_PASS);
   const notifyEmail = process.env.BOOKING_NOTIFY_EMAIL || CLUB_EMAIL;
-  if (!mailTransport) {
+  if (!mailConfigured) {
     console.warn("SMTP_USER / SMTP_PASS nincs beállítva: a foglalásokról nem megy ki e-mail.");
+  }
+
+  // A tárhelynek nincs IPv6 kapcsolata (ENETUNREACH), ezért a levelezőszerver címét
+  // mindig IPv4-en keressük meg, és arra csatlakozunk; a TLS tanúsítványt továbbra is
+  // a valódi szervernévre (pl. smtp.gmail.com) ellenőrizzük.
+  type MailTransport = ReturnType<typeof nodemailer.createTransport>;
+  let mailTransport: MailTransport | null = null;
+  let mailTransportExpires = 0;
+  async function getMailTransport(): Promise<MailTransport | null> {
+    if (!mailConfigured) return null;
+    if (mailTransport && Date.now() < mailTransportExpires) return mailTransport;
+    let connectHost = smtpHost;
+    try {
+      connectHost = (await dns.promises.lookup(smtpHost, { family: 4 })).address;
+    } catch (err: any) {
+      console.warn(`[E-MAIL] Nem sikerült IPv4 címet találni ehhez: ${smtpHost} (${err?.message || err}), a nevet használjuk.`);
+    }
+    mailTransport = nodemailer.createTransport({
+      host: connectHost,
+      port: smtpPort,
+      secure: (process.env.SMTP_SECURE ?? String(smtpPort === 465)) === "true",
+      auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
+      tls: { servername: smtpHost },
+      connectionTimeout: 15_000,
+      greetingTimeout: 15_000,
+      socketTimeout: 30_000,
+    });
+    mailTransportExpires = Date.now() + 60 * 60 * 1000; // óránként újra feloldjuk a címet
+    return mailTransport;
   }
 
   function bookingSummaryText(group: Booking[]) {
@@ -636,19 +660,21 @@ ${HOUSE_RULES.map((rule) => `      * ${rule}`).join("\n")}
 
   // Két e-mail: értesítés a klubnak és visszaigazolás a vendégnek. Hiba esetén a foglalás megmarad.
   async function sendBookingEmails(group: Booking[]): Promise<boolean> {
-    if (!mailTransport || group.length === 0) return false;
+    if (group.length === 0) return false;
+    const transport = await getMailTransport();
+    if (!transport) return false;
     const first = group[0];
     const from = process.env.MAIL_FROM || `"Club 11 Újbuda" <${process.env.SMTP_USER}>`;
     const summary = bookingSummaryText(group);
     try {
-      await mailTransport.sendMail({
+      await transport.sendMail({
         from,
         to: notifyEmail,
         replyTo: first.email,
         subject: `Új foglalási igény – ${first.date} – ${first.name}`,
         text: `Új foglalási igény érkezett a weboldalról.\n\n${summary}\n\nA vendégnek erre az e-mailre válaszolva tudsz visszaigazolást küldeni.`,
       });
-      await mailTransport.sendMail({
+      await transport.sendMail({
         from,
         to: first.email,
         replyTo: notifyEmail,
@@ -664,6 +690,7 @@ ${HOUSE_RULES.map((rule) => `      * ${rule}`).join("\n")}
       return true;
     } catch (err: any) {
       console.error("[E-MAIL] Nem sikerült elküldeni a foglalási e-mailt:", err?.message || err);
+      mailTransport = null; // következő foglalásnál újra feloldjuk a címet és új kapcsolatot nyitunk
       return false;
     }
   }
