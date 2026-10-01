@@ -841,6 +841,84 @@ ${HOUSE_RULES.map((rule) => `      * ${rule}`).join("\n")}
     }
   });
 
+  // ------------------------------------------------------------------
+  // ADMIN: FOGLALÁSOK LISTÁJA, VISSZAIGAZOLÁS, TÖRLÉS
+  // Ugyanazzal a belépéssel érhető el, mint a galéria kezelése.
+  // Az egyszerre leadott tételek (groupId) együtt kezelendők.
+  // ------------------------------------------------------------------
+  const groupKey = (b: Booking) => b.groupId || b.id;
+
+  app.post("/api/admin/bookings", (req, res) => {
+    if (!isValidAdminToken(req.body?.token)) {
+      return res.status(403).json({ error: "Lejárt vagy hiányzó belépés. Kérlek lépj be újra!" });
+    }
+    try {
+      const list = readBookings()
+        .map(({ cancelToken, ...rest }) => rest)
+        .sort((a, b) => a.date.localeCompare(b.date) || a.timeSlots[0].localeCompare(b.timeSlots[0]));
+      res.json({ bookings: list, mailConfigured });
+    } catch (err: any) {
+      console.error("Hiba a foglalások listázása során:", err);
+      res.status(500).json({ error: "Nem sikerült beolvasni a foglalásokat." });
+    }
+  });
+
+  app.post("/api/admin/bookings/confirm", async (req, res) => {
+    const { token, key } = req.body || {};
+    if (!isValidAdminToken(token)) {
+      return res.status(403).json({ error: "Lejárt vagy hiányzó belépés. Kérlek lépj be újra!" });
+    }
+    try {
+      const bookings = readBookings();
+      const group = bookings.filter((b) => groupKey(b) === key);
+      if (group.length === 0) return res.status(404).json({ error: "Ez a foglalás már nem létezik." });
+      const transport = await getMailTransport();
+      if (!transport) return res.status(503).json({ error: "Az e-mail küldés nincs beállítva a szerveren." });
+
+      const first = group[0];
+      await transport.sendMail({
+        from: process.env.MAIL_FROM || `"Club 11 Újbuda" <${process.env.SMTP_USER}>`,
+        to: first.email,
+        replyTo: notifyEmail,
+        subject: "Club 11 – visszaigazoltuk a foglalásodat",
+        text:
+          `Kedves ${first.name}!\n\nÖrömmel visszaigazoljuk a foglalásodat:\n\n${bookingSummaryText(group)}\n\n` +
+          `Az asztalt érkezéskor a személyzet jelöli ki.\n` +
+          `Ha mégsem tudtok jönni, kérjük, jelezd a +36 70 621 4181-es számon, vagy válaszolj erre az e-mailre.\n\n` +
+          `Várunk szeretettel!\n\nClub 11 Újbuda\n1116 Budapest, Hauszmann Alajos u. 5. (Gabányi László Sportcsarnok)`,
+      });
+
+      const confirmedAt = new Date().toISOString();
+      for (const b of group) b.confirmedAt = confirmedAt;
+      writeBookings(bookings);
+      console.log(`[FOGLALÁS VISSZAIGAZOLVA] ${first.date} – ${first.name} | ${first.email}`);
+      res.json({ success: true, confirmedAt });
+    } catch (err: any) {
+      console.error("[E-MAIL] Nem sikerült elküldeni a visszaigazolást:", err?.message || err);
+      mailTransport = null;
+      res.status(502).json({ error: "Nem sikerült elküldeni a visszaigazoló e-mailt. Próbáld újra, vagy hívd fel a vendéget." });
+    }
+  });
+
+  app.post("/api/admin/bookings/delete", (req, res) => {
+    const { token, key } = req.body || {};
+    if (!isValidAdminToken(token)) {
+      return res.status(403).json({ error: "Lejárt vagy hiányzó belépés. Kérlek lépj be újra!" });
+    }
+    try {
+      const bookings = readBookings();
+      const removed = bookings.filter((b) => groupKey(b) === key);
+      writeBookings(bookings.filter((b) => groupKey(b) !== key));
+      for (const b of removed) {
+        console.log(`[FOGLALÁS TÖRÖLVE (admin)] ${b.typeName} – ${b.date} ${b.timeSlot} – ${b.name}`);
+      }
+      res.json({ success: true });
+    } catch (err: any) {
+      console.error("Hiba a foglalás törlése során:", err);
+      res.status(500).json({ error: "Szerverhiba történt a törlés során." });
+    }
+  });
+
   // Serve uploaded images directly from various directories for maximum robustness
   app.get(["/asztalok.jpg", "/asztalok.png", "/asztalok.jpeg", "/asztalok.webp"], (req, res) => {
     const filename = path.basename(req.path);
