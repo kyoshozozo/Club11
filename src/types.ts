@@ -31,6 +31,7 @@ export interface Booking {
   phone: string;
   createdAt: string;
   cancelToken?: string; // csak a foglaló böngészőjében van meg, ezzel mondható le
+  confirmedAt?: string; // mikor küldte el a klub a visszaigazolást (admin felületről)
 }
 
 // Nyitvatartás egy napra: nyitás és zárás egész órában, vagy null ha zárva

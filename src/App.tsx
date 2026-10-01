@@ -3,8 +3,10 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Navbar from './components/Navbar';
+import CookieBanner from './components/CookieBanner';
+import { getConsent, loadAnalytics, trackPage } from './analytics';
 import Hero from './components/Hero';
 import BookingSystem from './components/BookingSystem';
 import Menu from './components/Menu';
@@ -17,14 +19,31 @@ import Club11Logo from './components/Club11Logo';
 import { Coffee, Gamepad2, Info, MapPin, MessageSquare, Facebook, Phone, Heart } from 'lucide-react';
 import { HOUSE_RULES, BOOKING_INFO } from './data';
 
+const SECTION_TITLES: Record<string, string> = {
+  home: 'Főoldal',
+  booking: 'Asztalfoglalás',
+  menu: 'Áraink',
+  gallery: 'Galéria',
+  posts: 'Hírek',
+  events: 'Rendezvények',
+  about: 'Kapcsolat',
+};
+
 export default function App() {
   const [activeSection, setActiveSection] = useState<string>('home');
   const [isChatOpen, setIsChatOpen] = useState<boolean>(false);
+  const [showCookieBanner, setShowCookieBanner] = useState<boolean>(() => getConsent() === null);
+
+  // Látogatottság-mérés: csak ha a látogató korábban elfogadta
+  useEffect(() => {
+    if (getConsent() === 'accepted') loadAnalytics();
+  }, []);
 
   // Oldalváltás: az új oldal tetejére ugrik (mobilon különösen fontos)
   const navigate = (section: string) => {
     setActiveSection(section);
     window.scrollTo({ top: 0 });
+    trackPage(section, `Club 11 – ${SECTION_TITLES[section] || section}`);
   };
 
   // Quick navigation helpers
@@ -242,10 +261,23 @@ export default function App() {
 
           <div className="mt-12 pt-6 border-t border-slate-900 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-600 font-mono">
             <span>&copy; {new Date().getFullYear()} Club 11 Újbuda. Minden jog fenntartva.</span>
+            <button onClick={() => setShowCookieBanner(true)} className="hover:text-slate-400 transition-colors">
+              Süti beállítások
+            </button>
             <span>Készült a család és az AI segítségével</span>
           </div>
         </div>
       </footer>
+
+      {showCookieBanner && (
+        <CookieBanner
+          onChoice={(choice) => {
+            setShowCookieBanner(false);
+            // A visszavont hozzájárulás a már betöltött mérőkódot csak újratöltéssel állítja le
+            if (choice === 'declined' && window.gtag) window.location.reload();
+          }}
+        />
+      )}
 
     </div>
   );
