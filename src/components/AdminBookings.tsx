@@ -5,7 +5,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { CalendarCheck, Mail, Phone, Users, Send, Trash2, RefreshCw, Loader2, CheckCircle2, AlertCircle, MessageSquare } from 'lucide-react';
-import { DAY_NAMES, dayOfWeek } from '../data';
+import { DAY_NAMES, dayOfWeek, bookingItemLabel } from '../data';
 import type { Booking } from '../types';
 
 interface AdminBookingsProps {
@@ -115,7 +115,7 @@ export default function AdminBookings({ token, onSessionExpired }: AdminBookings
             </p>
             <ul className="text-xs text-emerald-300 mt-1 space-y-0.5">
               {group.items.map(b => (
-                <li key={b.id}>• {b.typeName}: {b.timeSlot}</li>
+                <li key={b.id}>• {bookingItemLabel(b)}: {b.timeSlot}</li>
               ))}
             </ul>
           </div>
