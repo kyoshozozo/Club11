@@ -4,53 +4,50 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { MapPin, Phone, Mail, Clock, Send, CheckCircle2, Navigation, Compass } from 'lucide-react';
-import { OPENING_HOURS, DAY_NAMES, WEEK_ORDER, formatDayHours } from '../data';
+import { MapPin, Phone, Mail, Clock, Send, CheckCircle2, Navigation, Compass, AlertCircle, Loader2 } from 'lucide-react';
+import { OPENING_HOURS, DAY_NAMES, WEEK_ORDER, formatDayHours, CLUB_EMAIL } from '../data';
 
 export default function About() {
   const [msgName, setMsgName] = useState('');
   const [msgEmail, setMsgEmail] = useState('');
   const [msgSubject, setMsgSubject] = useState('');
   const [msgText, setMsgText] = useState('');
+  const [website, setWebsite] = useState(''); // rejtett mező a spamrobotok ellen
   const [isSent, setIsSent] = useState(false);
-  
-  // Custom contact submission log stored locally
-  const [sentMessages, setSentMessages] = useState<any[]>([]);
+  const [isSending, setIsSending] = useState(false);
+  const [sendError, setSendError] = useState('');
 
+  // A régi változat csak a böngészőben tárolta az üzeneteket (el sem küldte őket): ezt töröljük
   useEffect(() => {
-    const saved = localStorage.getItem('club11_messages_log');
-    if (saved) {
-      try {
-        setSentMessages(JSON.parse(saved));
-      } catch (e) {
-        console.error(e);
-      }
-    }
+    try {
+      localStorage.removeItem('club11_messages_log');
+    } catch {}
   }, []);
 
-  const handleSendMessage = (e: React.FormEvent) => {
+  const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    const newMsg = {
-      id: `msg-${Date.now()}`,
-      name: msgName,
-      email: msgEmail,
-      subject: msgSubject,
-      text: msgText,
-      date: new Date().toLocaleDateString('hu-HU')
-    };
-
-    const updated = [newMsg, ...sentMessages];
-    setSentMessages(updated);
-    localStorage.setItem('club11_messages_log', JSON.stringify(updated));
-
-    setIsSent(true);
-    setMsgText('');
-    setMsgSubject('');
-    
-    setTimeout(() => {
-      setIsSent(false);
-    }, 5000);
+    setSendError('');
+    setIsSent(false);
+    setIsSending(true);
+    try {
+      const res = await fetch('/api/contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: msgName, email: msgEmail, subject: msgSubject, message: msgText, website }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setSendError(data.error || `Nem sikerült elküldeni az üzenetet. Kérlek írj nekünk közvetlenül: ${CLUB_EMAIL}`);
+        return;
+      }
+      setIsSent(true);
+      setMsgText('');
+      setMsgSubject('');
+    } catch {
+      setSendError(`Hálózati hiba, az üzenet nem ment el. Kérlek próbáld újra, vagy írj nekünk: ${CLUB_EMAIL}`);
+    } finally {
+      setIsSending(false);
+    }
   };
 
   const schedule = WEEK_ORDER.map(day => ({
@@ -201,40 +198,51 @@ export default function About() {
               className="w-full bg-slate-900 border border-slate-800 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-emerald-500 font-sans"
             ></textarea>
 
+            {/* Rejtett mező: a látogató nem látja, csak a spamrobotok töltik ki */}
+            <input
+              type="text"
+              name="website"
+              tabIndex={-1}
+              autoComplete="off"
+              aria-hidden="true"
+              value={website}
+              onChange={(e) => setWebsite(e.target.value)}
+              className="hidden"
+            />
+
             {isSent && (
               <div className="flex items-center gap-2 p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-400 font-mono" id="about-sent-success">
                 <CheckCircle2 className="w-4 h-4 shrink-0" />
-                <span>Üzenet elküldve! Köszönjük a megkeresést.</span>
+                <span>Üzenet elküldve! Köszönjük a megkeresést, hamarosan válaszolunk. A megadott címre visszaigazolást küldtünk.</span>
+              </div>
+            )}
+
+            {sendError && (
+              <div className="flex items-start gap-2 p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-xs text-rose-400" id="about-sent-error">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                <span>{sendError}</span>
               </div>
             )}
 
             <button
               type="submit"
               id="about-submit-btn"
-              className="w-full py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 font-bold text-xs tracking-wide transition-all uppercase flex items-center justify-center gap-2"
+              disabled={isSending}
+              className="w-full py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 font-bold text-xs tracking-wide transition-all uppercase flex items-center justify-center gap-2 disabled:opacity-60"
             >
-              Üzenet Küldése
-              <Send className="w-3.5 h-3.5" />
+              {isSending ? (
+                <>
+                  Küldés...
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                </>
+              ) : (
+                <>
+                  Üzenet Küldése
+                  <Send className="w-3.5 h-3.5" />
+                </>
+              )}
             </button>
           </form>
-
-          {/* Interactive history logs */}
-          {sentMessages.length > 0 && (
-            <div className="pt-4 border-t border-slate-850 space-y-2">
-              <span className="text-[10px] font-mono text-slate-500 uppercase tracking-wider block">Küldött üzenetek naplója ({sentMessages.length})</span>
-              <div className="space-y-2 max-h-36 overflow-y-auto pr-1">
-                {sentMessages.map((msg) => (
-                  <div key={msg.id} className="p-3 bg-slate-900/60 rounded-xl border border-slate-850 flex justify-between items-start text-[11px]">
-                    <div className="space-y-0.5">
-                      <span className="font-bold text-slate-300 block">{msg.subject}</span>
-                      <span className="text-slate-500 block font-mono">Dátum: {msg.date}</span>
-                    </div>
-                    <span className="text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded text-[9px] font-mono uppercase">Sikeres</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
 
         </div>
 

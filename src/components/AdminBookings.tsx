@@ -224,7 +224,12 @@ export default function AdminBookings({ token, onSessionExpired }: AdminBookings
               >
                 {showPast ? '▾' : '▸'} Korábbi foglalások ({past.length})
               </button>
-              {showPast && <div className="space-y-3 mt-3 opacity-70">{past.map(renderGroup)}</div>}
+              {showPast && (
+                <div className="space-y-3 mt-3">
+                  <p className="text-[11px] text-slate-500">A lejárt foglalásokat a rendszer minden vasárnap automatikusan törli.</p>
+                  <div className="space-y-3 opacity-70">{past.map(renderGroup)}</div>
+                </div>
+              )}
             </div>
           )}
         </>
