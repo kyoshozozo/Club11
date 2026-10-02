@@ -62,6 +62,27 @@ async function startServer() {
   const writeBookings = (bookings: Booking[]) =>
     fs.writeFileSync(bookingsFilePath, JSON.stringify(bookings, null, 2), "utf-8");
 
+  // Heti takarítás: vasárnaponként (zárva vagyunk) kikerülnek a hét lejárt foglalásai.
+  // Úgy számoljuk, hogy minden, a legutóbbi vasárnap előtti foglalás törlődik – így akkor is
+  // pótlódik, ha a tárhely épp vasárnap altatta az alkalmazást.
+  function purgeLastWeeksBookings() {
+    try {
+      const today = budapestNow();
+      const [y, m, d] = today.date.split("-").map(Number);
+      const lastSunday = new Date(Date.UTC(y, m - 1, d - today.day)).toISOString().slice(0, 10);
+      const bookings = readBookings();
+      const kept = bookings.filter((b) => b.date >= lastSunday);
+      if (kept.length < bookings.length) {
+        writeBookings(kept);
+        console.log(`[HETI TAKARÍTÁS] ${bookings.length - kept.length} lejárt foglalás törölve (${lastSunday} előttiek).`);
+      }
+    } catch (err) {
+      console.error("Hiba a lejárt foglalások törlése során:", err);
+    }
+  }
+  purgeLastWeeksBookings();
+  setInterval(purgeLastWeeksBookings, 60 * 60 * 1000); // óránként ellenőrizzük
+
   // Hány asztal/gép foglalt már az adott idősávban (egy foglalás több darabot is lefoglalhat)
   const countBooked = (bookings: Booking[], type: TableType, date: string, slot: string) =>
     bookings
@@ -854,6 +875,75 @@ ${HOUSE_RULES.map((rule) => `      * ${rule}`).join("\n")}
   });
 
   // ------------------------------------------------------------------
+  // KAPCSOLAT ŰRLAP: az üzenet e-mailben megy a klubnak, válaszcím a küldő.
+  // A vendég rövid visszaigazolást kap, hogy az üzenete megérkezett.
+  // ------------------------------------------------------------------
+  const CONTACT_WINDOW_MS = 60 * 60 * 1000;
+  const CONTACT_MAX_PER_WINDOW = 5;
+  const contactAttempts = new Map<string, number[]>();
+
+  app.post("/api/contact", async (req, res) => {
+    const ipKey = req.ip || "unknown";
+    const now = Date.now();
+    const recent = (contactAttempts.get(ipKey) || []).filter((t) => now - t < CONTACT_WINDOW_MS);
+    if (recent.length >= CONTACT_MAX_PER_WINDOW) {
+      return res.status(429).json({ error: "Túl sok üzenet rövid idő alatt. Kérlek próbáld újra később, vagy hívj minket telefonon!" });
+    }
+
+    const { name, email, subject, message, website } = req.body || {};
+    // Rejtett mező: ember nem tölti ki, a spamrobotok igen – nekik csendben "sikert" mondunk
+    if (typeof website === "string" && website.trim()) return res.json({ success: true });
+
+    const cleanName = typeof name === "string" ? name.trim().slice(0, 100) : "";
+    const cleanEmail = typeof email === "string" ? email.trim().slice(0, 200) : "";
+    const cleanSubject = typeof subject === "string" ? subject.trim().slice(0, 150) : "";
+    const cleanMessage = typeof message === "string" ? message.trim().slice(0, 3000) : "";
+    if (!cleanName || !isValidEmail(cleanEmail) || !cleanSubject || !cleanMessage) {
+      return res.status(400).json({ error: "Kérlek töltsd ki a nevet, egy érvényes e-mail címet, a tárgyat és az üzenetet!" });
+    }
+
+    recent.push(now);
+    contactAttempts.set(ipKey, recent);
+    console.log(`[ÜZENET] ${cleanName} | ${cleanEmail} | ${cleanSubject}`);
+
+    const transport = await getMailTransport();
+    if (!transport) {
+      return res.status(503).json({ error: `Az üzenetküldés most nem működik. Kérlek írj nekünk közvetlenül: ${CLUB_EMAIL}` });
+    }
+    const from = process.env.MAIL_FROM || `"Club 11 Újbuda" <${process.env.SMTP_USER}>`;
+    try {
+      await transport.sendMail({
+        from,
+        to: notifyEmail,
+        replyTo: `"${cleanName.replace(/"/g, "")}" <${cleanEmail}>`,
+        subject: `Üzenet a weboldalról: ${cleanSubject}`,
+        text:
+          `Új üzenet érkezett a weboldal Kapcsolat oldaláról.\n\n` +
+          `Név: ${cleanName}\nE-mail: ${cleanEmail}\nTárgy: ${cleanSubject}\n\n${cleanMessage}\n\n` +
+          `Erre az e-mailre válaszolva közvetlenül a küldőnek válaszolsz.`,
+      });
+    } catch (err: any) {
+      console.error("[E-MAIL] Nem sikerült elküldeni a kapcsolati üzenetet:", err?.message || err);
+      mailTransport = null;
+      return res.status(502).json({ error: `Nem sikerült elküldeni az üzenetet. Kérlek próbáld újra, vagy írj nekünk közvetlenül: ${CLUB_EMAIL}` });
+    }
+
+    // A visszaigazolás hibája már nem baj: a klub megkapta az üzenetet
+    transport.sendMail({
+      from,
+      to: cleanEmail,
+      replyTo: notifyEmail,
+      subject: "Club 11 – megkaptuk az üzenetedet",
+      text:
+        `Kedves ${cleanName}!\n\nKöszönjük, megkaptuk az üzenetedet („${cleanSubject}”), hamarosan válaszolunk.\n\n` +
+        `Sürgős esetben hívj minket: +36 70 621 4181.\n\nClub 11 Újbuda\n1116 Budapest, Hauszmann Alajos u. 5. (Gabányi László Sportcsarnok)`,
+    }).catch((err: any) => console.error("[E-MAIL] Nem sikerült a visszaigazolás a küldőnek:", err?.message || err));
+
+    console.log(`[E-MAIL] Kapcsolati üzenet elküldve: ${notifyEmail}`);
+    res.json({ success: true });
+  });
+
+  // ------------------------------------------------------------------
   // ADMIN: FOGLALÁSOK LISTÁJA, VISSZAIGAZOLÁS, TÖRLÉS
   // Ugyanazzal a belépéssel érhető el, mint a galéria kezelése.
   // Az egyszerre leadott tételek (groupId) együtt kezelendők.
@@ -865,6 +955,7 @@ ${HOUSE_RULES.map((rule) => `      * ${rule}`).join("\n")}
       return res.status(403).json({ error: "Lejárt vagy hiányzó belépés. Kérlek lépj be újra!" });
     }
     try {
+      purgeLastWeeksBookings();
       const list = readBookings()
         .map(({ cancelToken, ...rest }) => rest)
         .sort((a, b) => a.date.localeCompare(b.date) || a.timeSlots[0].localeCompare(b.timeSlots[0]));
