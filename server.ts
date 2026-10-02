@@ -32,8 +32,11 @@ import {
   GAME_CATEGORIES,
   MAX_ONLINE_PARTY_SIZE,
   CLUB_EMAIL,
+  bookingCoversSlot,
+  onlineQuantity,
 } from "./src/data";
 import type { Booking, TableType } from "./src/types";
+import { registerPultRoutes, pickFreeTables, assignMissingTables } from "./pult";
 
 // Load environment variables
 dotenv.config();
@@ -83,11 +86,20 @@ async function startServer() {
   purgeLastWeeksBookings();
   setInterval(purgeLastWeeksBookings, 60 * 60 * 1000); // óránként ellenőrizzük
 
-  // Hány asztal/gép foglalt már az adott idősávban (egy foglalás több darabot is lefoglalhat)
+  // A pultos tablet bevezetése előtti webes foglalások is kapjanak konkrét asztalt
+  try {
+    const bookings = readBookings();
+    if (assignMissingTables(bookings) > 0) writeBookings(bookings);
+  } catch (err) {
+    console.error("Hiba az asztalok kiosztása során:", err);
+  }
+
+  // Hány asztal/gép foglalt már az adott idősávban (egy foglalás több darabot is lefoglalhat).
+  // A pultnál felvett félórás foglalás minden olyan órát lefoglal, amibe belelóg.
   const countBooked = (bookings: Booking[], type: TableType, date: string, slot: string) =>
     bookings
-      .filter((b) => b.type === type && b.date === date && b.timeSlots.includes(slot))
-      .reduce((sum, b) => sum + (b.quantity ?? 1), 0);
+      .filter((b) => b.type === type && b.date === date && bookingCoversSlot(b, slot))
+      .reduce((sum, b) => sum + onlineQuantity(b), 0); // a csak pultnál foglalható asztal (pl. verseny) nem számít
 
   // Szabad helyek száma idősávonként és típusonként egy adott napra
   // (elmúlt/elkezdődött idősávnál 0). A foglaló és az AI csapos is ezt használja.
@@ -836,7 +848,11 @@ ${HOUSE_RULES.map((rule) => `      * ${rule}`).join("\n")}
         createdAt: new Date().toISOString(),
         cancelToken: crypto.randomBytes(16).toString("hex"),
       }));
-      bookings.push(...created);
+      // A pultos tablet számára rögtön konkrét asztalt is kiosztunk (a személyzet átteheti)
+      for (const b of created) {
+        b.tables = pickFreeTables(b, bookings, b.quantity ?? 1);
+        bookings.push(b);
+      }
       writeBookings(bookings);
 
       console.log(`==================================================`);
@@ -966,19 +982,23 @@ ${HOUSE_RULES.map((rule) => `      * ${rule}`).join("\n")}
     }
   });
 
-  app.post("/api/admin/bookings/confirm", async (req, res) => {
-    const { token, key } = req.body || {};
-    if (!isValidAdminToken(token)) {
-      return res.status(403).json({ error: "Lejárt vagy hiányzó belépés. Kérlek lépj be újra!" });
+  // Hiba HTTP státusszal, hogy az admin és a pultos végpont is ugyanúgy jelezhesse
+  class BookingError extends Error {
+    constructor(public status: number, message: string) {
+      super(message);
     }
-    try {
-      const bookings = readBookings();
-      const group = bookings.filter((b) => groupKey(b) === key);
-      if (group.length === 0) return res.status(404).json({ error: "Ez a foglalás már nem létezik." });
-      const transport = await getMailTransport();
-      if (!transport) return res.status(503).json({ error: "Az e-mail küldés nincs beállítva a szerveren." });
+  }
 
-      const first = group[0];
+  // Visszaigazoló e-mail a vendégnek; siker esetén a csoport minden tétele confirmedAt-et kap
+  async function confirmBookingGroup(key: string): Promise<string> {
+    const group = readBookings().filter((b) => groupKey(b) === key);
+    if (group.length === 0) throw new BookingError(404, "Ez a foglalás már nem létezik.");
+    const first = group[0];
+    if (!first.email) throw new BookingError(400, "Ehhez a foglaláshoz nincs e-mail cím (a pultnál vették fel).");
+    const transport = await getMailTransport();
+    if (!transport) throw new BookingError(503, "Az e-mail küldés nincs beállítva a szerveren.");
+
+    try {
       await transport.sendMail({
         from: process.env.MAIL_FROM || `"Club 11 Újbuda" <${process.env.SMTP_USER}>`,
         to: first.email,
@@ -990,16 +1010,31 @@ ${HOUSE_RULES.map((rule) => `      * ${rule}`).join("\n")}
           `Ha mégsem tudtok jönni, kérjük, jelezd a +36 70 621 4181-es számon, vagy válaszolj erre az e-mailre.\n\n` +
           `Várunk szeretettel!\n\nClub 11 Újbuda\n1116 Budapest, Hauszmann Alajos u. 5. (Gabányi László Sportcsarnok)`,
       });
-
-      const confirmedAt = new Date().toISOString();
-      for (const b of group) b.confirmedAt = confirmedAt;
-      writeBookings(bookings);
-      console.log(`[FOGLALÁS VISSZAIGAZOLVA] ${first.date} – ${first.name} | ${first.email}`);
-      res.json({ success: true, confirmedAt });
     } catch (err: any) {
       console.error("[E-MAIL] Nem sikerült elküldeni a visszaigazolást:", err?.message || err);
       mailTransport = null;
-      res.status(502).json({ error: "Nem sikerült elküldeni a visszaigazoló e-mailt. Próbáld újra, vagy hívd fel a vendéget." });
+      throw new BookingError(502, "Nem sikerült elküldeni a visszaigazoló e-mailt. Próbáld újra, vagy hívd fel a vendéget.");
+    }
+
+    // Újraolvasás: a levélküldés alatt a pultnál is módosulhatott a fájl
+    const bookings = readBookings();
+    const confirmedAt = new Date().toISOString();
+    for (const b of bookings) if (groupKey(b) === key) b.confirmedAt = confirmedAt;
+    writeBookings(bookings);
+    console.log(`[FOGLALÁS VISSZAIGAZOLVA] ${first.date} – ${first.name} | ${first.email}`);
+    return confirmedAt;
+  }
+
+  app.post("/api/admin/bookings/confirm", async (req, res) => {
+    const { token, key } = req.body || {};
+    if (!isValidAdminToken(token)) {
+      return res.status(403).json({ error: "Lejárt vagy hiányzó belépés. Kérlek lépj be újra!" });
+    }
+    try {
+      const confirmedAt = await confirmBookingGroup(key);
+      res.json({ success: true, confirmedAt });
+    } catch (err: any) {
+      res.status(err instanceof BookingError ? err.status : 500).json({ error: err?.message || "Szerverhiba történt." });
     }
   });
 
@@ -1020,6 +1055,17 @@ ${HOUSE_RULES.map((rule) => `      * ${rule}`).join("\n")}
       console.error("Hiba a foglalás törlése során:", err);
       res.status(500).json({ error: "Szerverhiba történt a törlés során." });
     }
+  });
+
+  // ------------------------------------------------------------------
+  // PULTOS TABLET: API (pult.ts) és a felület a /pult címen
+  // ------------------------------------------------------------------
+  registerPultRoutes(app, { readBookings, writeBookings, isValidDate, confirmBookingGroup, groupKey, mailConfigured });
+
+  app.get("/pult", (req, res) => {
+    const isDevServer = process.env.NODE_ENV !== "production" && (process.argv[1]?.includes("server.ts") ?? false);
+    res.set({ "Cache-Control": "no-cache", "X-Robots-Tag": "noindex" });
+    res.sendFile(path.join(process.cwd(), isDevServer ? "public" : "dist", "pult.html"));
   });
 
   // Serve uploaded images directly from various directories for maximum robustness
