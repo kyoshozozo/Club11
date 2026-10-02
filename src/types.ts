@@ -14,6 +14,9 @@ export interface TableCategory {
   count: number; // ennyi asztal/gép van ebből, egy idősávban legfeljebb ennyi foglalás lehet
 }
 
+// Honnan jött a foglalás: weboldal, telefon, Messenger vagy helyben a pultnál
+export type BookingSource = 'web' | 'tel' | 'msg' | 'hely';
+
 export interface Booking {
   id: string;
   groupId?: string; // az egyszerre leadott tételek közös azonosítója
@@ -33,6 +36,12 @@ export interface Booking {
   createdAt: string;
   cancelToken?: string; // csak a foglaló böngészőjében van meg, ezzel mondható le
   confirmedAt?: string; // mikor küldte el a klub a visszaigazolást (admin felületről)
+  // A pultos tablet mezői:
+  source?: BookingSource; // hiányzik = weboldal
+  tables?: string[]; // kiosztott konkrét asztalok/gépek, pl. ["pool-3"]
+  start?: number; // pultnál felvett foglalás kezdete percben éjféltől (félórás pontosság)
+  end?: number; // ...és vége; ha hiányzik, a timeSlots számít
+  arrived?: boolean; // a pultnál megérkezettnek jelölve
 }
 
 // Nyitvatartás egy napra: nyitás és zárás egész órában, vagy null ha zárva

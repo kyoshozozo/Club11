@@ -191,3 +191,51 @@ export const TIME_SLOTS = [
   '21:00 - 22:00',
   '22:00 - 23:00',
 ];
+
+// ------------------------------------------------------------------
+// PULTOS TABLET: konkrét asztalok és percre számolt időtartamok
+// ------------------------------------------------------------------
+const TABLE_SHORT_NAMES: Record<TableType, string> = { pool: 'Biliárd', darts: 'Darts', foosball: 'Csocsó', seating: 'Asztal' };
+
+// Csak a pultnál foglalható asztalok: a weboldalon nem foglalhatók, és a szabad helyek
+// számába sem tartoznak bele (a kategória `count` értéke csak a webről is foglalhatókat számolja)
+const PULT_ONLY_UNITS: { id: string; type: TableType; name: string }[] = [
+  { id: 'pool-verseny', type: 'pool', name: 'Biliárdasztal-verseny' },
+];
+
+// Az összes konkrét asztal/gép kategóriánként, pl. { id: 'pool-1', type: 'pool', name: 'Biliárd 1', online: true }
+export const TABLE_UNITS = TABLE_CATEGORIES.flatMap(c => [
+  ...Array.from({ length: c.count }, (_, i) => ({ id: `${c.type}-${i + 1}`, type: c.type, name: `${TABLE_SHORT_NAMES[c.type]} ${i + 1}`, online: true })),
+  ...PULT_ONLY_UNITS.filter(u => u.type === c.type).map(u => ({ ...u, online: false })),
+]);
+
+export const isOnlineTable = (id: string) => TABLE_UNITS.find(u => u.id === id)?.online !== false;
+
+// Ennyi asztalt foglal le a foglalás a weboldalról is foglalhatók közül
+export const onlineQuantity = (b: Pick<Booking, 'quantity' | 'tables'>) =>
+  Math.max(0, (b.quantity ?? 1) - (b.tables?.filter(t => !isOnlineTable(t)).length ?? 0));
+
+// A foglalás összefüggő szakaszai percben (éjféltől). A pultnál felvett foglalásnak
+// start/end mezője van (félórás pontosság), a weboldalasnak csak egész órás timeSlots listája.
+export function bookingIntervals(b: Pick<Booking, 'timeSlots' | 'start' | 'end'>): [number, number][] {
+  if (typeof b.start === 'number' && typeof b.end === 'number') return [[b.start, b.end]];
+  const hours = b.timeSlots.map(slotStartHour).sort((x, y) => x - y);
+  const out: [number, number][] = [];
+  for (const h of hours) {
+    const last = out[out.length - 1];
+    if (last && last[1] === h * 60) last[1] = h * 60 + 60;
+    else out.push([h * 60, h * 60 + 60]);
+  }
+  return out;
+}
+
+export const bookingOverlaps = (b: Pick<Booking, 'timeSlots' | 'start' | 'end'>, start: number, end: number) =>
+  bookingIntervals(b).some(([s, e]) => s < end && start < e);
+
+// Lefedi-e (akár csak részben) a foglalás az adott egyórás idősávot
+export const bookingCoversSlot = (b: Pick<Booking, 'timeSlots' | 'start' | 'end'>, slot: string) =>
+  bookingOverlaps(b, slotStartHour(slot) * 60, slotStartHour(slot) * 60 + 60);
+
+// A [start, end) percintervallumot érintő egyórás idősávok
+export const slotsForRange = (start: number, end: number) =>
+  TIME_SLOTS.filter(slot => slotStartHour(slot) * 60 < end && start < slotStartHour(slot) * 60 + 60);
