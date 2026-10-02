@@ -16,6 +16,9 @@ interface AdminBookingsProps {
 // Az egyszerre leadott tételek (pl. pool + leülős asztal) egy kártyán jelennek meg
 type BookingGroup = { key: string; items: Booking[] };
 
+// A pultos tableten felvett foglalások forrása (a weboldalasoknál nincs megadva)
+const SOURCE_LABELS: Record<string, string> = { tel: 'Telefon (pult)', msg: 'Messenger (pult)', hely: 'Helyben (pult)' };
+
 const todayInBudapest = () => new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Budapest' });
 
 const formatDateTime = (iso: string) =>
@@ -137,9 +140,13 @@ export default function AdminBookings({ token, onSessionExpired }: AdminBookings
           <a href={`tel:${first.phone.replace(/\s/g, '')}`} className="flex items-center gap-1.5 hover:text-emerald-400 font-mono">
             <Phone className="w-3.5 h-3.5 text-slate-500" /> {first.phone}
           </a>
-          <a href={`mailto:${first.email}`} className="flex items-center gap-1.5 hover:text-emerald-400 break-all">
-            <Mail className="w-3.5 h-3.5 text-slate-500" /> {first.email}
-          </a>
+          {first.email ? (
+            <a href={`mailto:${first.email}`} className="flex items-center gap-1.5 hover:text-emerald-400 break-all">
+              <Mail className="w-3.5 h-3.5 text-slate-500" /> {first.email}
+            </a>
+          ) : (
+            <p className="text-slate-400">Forrás: {SOURCE_LABELS[first.source ?? ''] ?? 'Pult'}</p>
+          )}
           <p className="text-slate-500">Leadva: {formatDateTime(first.createdAt)}</p>
         </div>
 
@@ -150,7 +157,7 @@ export default function AdminBookings({ token, onSessionExpired }: AdminBookings
         )}
 
         <div className="flex flex-wrap gap-2 pt-1">
-          <button
+          {first.email && <button
             onClick={() => confirmGroup(group)}
             disabled={isBusy}
             className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition-all disabled:opacity-50 ${
@@ -161,7 +168,7 @@ export default function AdminBookings({ token, onSessionExpired }: AdminBookings
           >
             {isBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
             {first.confirmedAt ? 'Visszaigazolás újraküldése' : 'Visszaigazolás küldése e-mailben'}
-          </button>
+          </button>}
           <button
             onClick={() => deleteGroup(group)}
             disabled={isBusy}
